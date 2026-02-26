@@ -43,6 +43,9 @@ knowledge_base/*.faiss
 knowledge_base/*.pkl
 knowledge_base/index.*
 !knowledge_base/.gitkeep
+knowledge_base/faiss_index/*.index
+knowledge_base/faiss_index/*.json
+!knowledge_base/faiss_index/.gitkeep
 
 # ChromaDB runtime data (keep directory placeholder, ignore actual data)
 chroma_userdata/*
