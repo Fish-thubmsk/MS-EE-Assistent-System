@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database files (keep schema/docs, ignore large binary db files in root)
+*.db
+*.sqlite
+*.sqlite3
+
+# Vector index files (large binary artifacts, keep directory placeholder)
+knowledge_base/*.faiss
+knowledge_base/*.pkl
+knowledge_base/index.*
+!knowledge_base/.gitkeep
+
+# ChromaDB runtime data (keep directory placeholder, ignore actual data)
+chroma_userdata/*
+!chroma_userdata/.gitkeep
+
+# Docker
+docker-compose.override.yml
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
