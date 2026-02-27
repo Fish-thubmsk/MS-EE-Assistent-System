@@ -8,111 +8,279 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <!-- marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <!-- Chart.js for diagnosis visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-    #app { flex: 1; display: flex; overflow: hidden; }
-    /* Sidebar */
-    #sidebar {
-      width: 240px; min-width: 200px;
-      background: #f8f9fa; border-right: 1px solid #dee2e6;
-      display: flex; flex-direction: column; overflow-y: auto; padding: 12px;
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1e40af;
+      --primary-light: #dbeafe;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-2: #64748b;
+      --text-muted: #94a3b8;
+      --sidebar-w: 248px;
     }
-    /* Main area */
+    * { box-sizing: border-box; }
+    body {
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--text); background: var(--surface-2);
+    }
+    /* ── Navbar ─────────────────────────────────── */
+    #topnav {
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; padding: 0 14px;
+      height: 52px; gap: 10px; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+    .nav-sidebar-toggle {
+      background: none; border: none; color: rgba(255,255,255,0.8);
+      cursor: pointer; padding: 4px 6px; border-radius: 6px;
+      font-size: 1.1rem; line-height: 1; transition: background 0.15s;
+    }
+    .nav-sidebar-toggle:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .nav-brand { font-size: 1rem; font-weight: 700; white-space: nowrap; letter-spacing: -0.01em; }
+    .nav-brand i { margin-right: 6px; }
+    .nav-divider { width: 1px; height: 22px; background: rgba(255,255,255,0.2); margin: 0 4px; }
+    #mode-tabs { display: flex; gap: 4px; }
+    #mode-tabs button {
+      padding: 5px 12px; font-size: 0.82rem; font-weight: 500;
+      border-radius: 6px; border: none; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    #mode-tabs button.active { background: rgba(255,255,255,0.22); color: #fff; }
+    #mode-tabs button:not(.active) { background: transparent; color: rgba(255,255,255,0.72); }
+    #mode-tabs button:not(.active):hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .nav-spacer { flex: 1; }
+    #nav-api-status { font-size: 0.75rem; color: rgba(255,255,255,0.5); white-space: nowrap; }
+    #nav-user { display: flex; align-items: center; gap: 8px; }
+    .user-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.22);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-name { font-size: 0.82rem; color: rgba(255,255,255,0.88); }
+    .btn-logout {
+      padding: 4px 10px; font-size: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px; background: transparent; color: rgba(255,255,255,0.75);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.5); }
+    /* ── App layout ──────────────────────────────── */
+    #app { flex: 1; display: flex; overflow: hidden; position: relative; }
+    /* ── Sidebar ─────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+      transition: width 0.22s ease, border-width 0.22s ease;
+    }
+    #sidebar.collapsed { width: 0; border-right-width: 0; }
+    #sidebar-inner {
+      width: var(--sidebar-w); min-width: var(--sidebar-w);
+      display: flex; flex-direction: column; overflow-y: auto;
+      padding: 12px; flex: 1;
+    }
+    .sidebar-section { margin-bottom: 16px; }
+    .sidebar-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      margin-bottom: 6px; padding: 0 2px;
+    }
+    /* User card in sidebar */
+    .sidebar-user-card {
+      background: var(--primary-light); border-radius: 8px;
+      padding: 10px 12px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sidebar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary); display: flex; align-items: center;
+      justify-content: center; font-size: 0.85rem; font-weight: 700;
+      color: #fff; flex-shrink: 0;
+    }
+    .sidebar-user-info .name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .sidebar-user-info .uid { font-size: 0.72rem; color: var(--text-2); margin-top: 1px; }
+    /* ── Main area ───────────────────────────────── */
     #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    /* Chat area */
+    /* ── Chat area ───────────────────────────────── */
     #chat-box {
       flex: 1; overflow-y: auto; padding: 16px;
       display: flex; flex-direction: column; gap: 12px;
+      background: var(--surface-2);
     }
     .msg-user { align-self: flex-end; }
     .msg-assistant { align-self: flex-start; }
     .msg-bubble {
       max-width: 75%; padding: 10px 14px; border-radius: 12px;
-      white-space: pre-wrap; word-break: break-word; font-size: 0.9rem;
+      word-break: break-word; font-size: 0.88rem; line-height: 1.55;
     }
-    .msg-user .msg-bubble { background: #0d6efd; color: #fff; border-bottom-right-radius: 4px; }
-    .msg-assistant .msg-bubble { background: #e9ecef; color: #212529; border-bottom-left-radius: 4px; }
-    /* Input row */
-    #input-area { border-top: 1px solid #dee2e6; padding: 10px 16px; background: #fff; }
-    /* Question card */
+    .msg-user .msg-bubble {
+      background: var(--primary); color: #fff;
+      border-bottom-right-radius: 4px;
+      white-space: pre-wrap;
+    }
+    .msg-assistant .msg-bubble {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-bottom-left-radius: 4px;
+    }
+    /* Markdown inside assistant bubbles */
+    .msg-assistant .msg-bubble p { margin: 0 0 8px; }
+    .msg-assistant .msg-bubble p:last-child { margin-bottom: 0; }
+    .msg-assistant .msg-bubble pre {
+      background: #f1f5f9; padding: 10px 12px; border-radius: 6px;
+      font-size: 0.8rem; overflow-x: auto; margin: 8px 0;
+    }
+    .msg-assistant .msg-bubble code {
+      background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.82em;
+    }
+    .msg-assistant .msg-bubble pre code { background: none; padding: 0; }
+    .msg-assistant .msg-bubble ul, .msg-assistant .msg-bubble ol { padding-left: 20px; margin: 6px 0; }
+    .msg-assistant .msg-bubble blockquote {
+      border-left: 3px solid var(--border); padding-left: 10px;
+      color: var(--text-2); margin: 6px 0;
+    }
+    /* ── Input row ───────────────────────────────── */
+    .input-bar {
+      border-top: 1px solid var(--border); padding: 10px 16px;
+      background: var(--surface); display: flex; gap: 8px; align-items: flex-end;
+    }
+    .input-bar textarea {
+      border-radius: 8px; border: 1.5px solid var(--border);
+      padding: 8px 12px; font-size: 0.88rem; resize: none; flex: 1;
+      transition: border-color 0.2s;
+    }
+    .input-bar textarea:focus { outline: none; border-color: var(--primary); }
+    /* ── Question card ───────────────────────────── */
     #question-card { margin: 12px 16px; }
-    /* Result panels */
-    #result-area { border-top: 1px solid #dee2e6; padding: 10px 16px; background: #fafafa; max-height: 240px; overflow-y: auto; }
-    /* Diagnosis panel */
+    /* Subject color labels */
+    .subject-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .subject-math    { background: #dbeafe; color: #1d4ed8; }
+    .subject-politics { background: #fee2e2; color: #b91c1c; }
+    .subject-english { background: #d1fae5; color: #065f46; }
+    .subject-default { background: #f1f5f9; color: #475569; }
+    /* Progress bar for question */
+    .question-progress { font-size: 0.75rem; color: var(--text-2); }
+    /* ── Result panels ───────────────────────────── */
+    #result-area {
+      border-top: 1px solid var(--border); padding: 10px 16px;
+      background: var(--surface-2); max-height: 240px; overflow-y: auto;
+    }
+    /* ── Grade area ──────────────────────────────── */
+    #grade-area { border-top: 1px solid var(--border); padding: 10px 16px; background: var(--surface-2); }
+    /* ── Diagnosis panel ─────────────────────────── */
     #diagnosis-panel { flex: 1; overflow-y: auto; padding: 16px; }
     .hidden { display: none !important; }
-    /* Spinner in bubble */
-    .typing-dot { display: inline-block; width: 8px; height: 8px; background: #666; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
+    /* Typing dots */
+    .typing-dot {
+      display: inline-block; width: 7px; height: 7px; background: #94a3b8;
+      border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite;
+    }
     .typing-dot:nth-child(2) { animation-delay: 0.2s; }
     .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
-    .badge-correct { background: #198754; }
-    .badge-wrong  { background: #dc3545; }
-    pre { background: #f1f3f5; padding: 8px; border-radius: 6px; font-size: 0.82rem; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+    .badge-correct { background: #16a34a !important; }
+    .badge-wrong   { background: #dc2626 !important; }
+    /* Chart container */
+    #diag-chart-wrap { background: var(--surface); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
 
 <!-- Top navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3 py-2">
-  <span class="navbar-brand fw-bold me-3"><i class="bi bi-mortarboard-fill me-1"></i>考研智能辅导</span>
-  <div class="d-flex gap-2" id="mode-tabs">
-    <button class="btn btn-sm btn-light active" data-mode="qa"><i class="bi bi-chat-dots me-1"></i>问答</button>
-    <button class="btn btn-sm btn-outline-light" data-mode="practice"><i class="bi bi-pencil-square me-1"></i>刷题</button>
-    <button class="btn btn-sm btn-outline-light" data-mode="diagnosis"><i class="bi bi-bar-chart-line me-1"></i>诊断</button>
+<nav id="topnav">
+  <button class="nav-sidebar-toggle" id="sidebar-toggle-btn" title="收起/展开侧栏">
+    <i class="bi bi-layout-sidebar"></i>
+  </button>
+  <span class="nav-brand"><i class="bi bi-mortarboard-fill"></i>考研智能辅导</span>
+  <div class="nav-divider"></div>
+  <div id="mode-tabs">
+    <button class="active" data-mode="qa"><i class="bi bi-chat-dots me-1"></i>问答</button>
+    <button data-mode="practice"><i class="bi bi-pencil-square me-1"></i>刷题</button>
+    <button data-mode="diagnosis"><i class="bi bi-bar-chart-line me-1"></i>诊断</button>
   </div>
-  <div class="ms-auto text-white-50 small" id="api-status">后端：<span id="api-url-display">http://localhost:8000</span></div>
+  <div class="nav-spacer"></div>
+  <span id="nav-api-status">后端：<span id="api-url-display">http://localhost:8000</span></span>
+  <div class="nav-divider"></div>
+  <div id="nav-user">
+    <div class="user-avatar" id="nav-avatar">?</div>
+    <span class="user-name" id="nav-user-name">—</span>
+    <button class="btn-logout" id="logout-btn"><i class="bi bi-box-arrow-right me-1"></i>退出</button>
+  </div>
 </nav>
 
 <div id="app">
   <!-- Sidebar -->
   <aside id="sidebar">
+    <div id="sidebar-inner">
 
-    <!-- Backend URL config -->
-    <div class="mb-3">
-      <label class="form-label fw-semibold small mb-1">后端地址</label>
-      <input id="backend-url" type="text" class="form-control form-control-sm" value="http://localhost:8000" />
-    </div>
-
-    <!-- User selector -->
-    <div class="mb-3">
-      <label class="form-label fw-semibold small mb-1"><i class="bi bi-person-circle me-1"></i>当前用户</label>
-      <select id="user-select" class="form-select form-select-sm">
-        <option value="user_001">user_001（数学偏弱）</option>
-        <option value="user_002">user_002（政治偏弱）</option>
-        <option value="user_003">user_003（英语偏弱）</option>
-      </select>
-    </div>
-
-    <!-- Knowledge base toggle -->
-    <div class="mb-3">
-      <label class="form-label fw-semibold small mb-1"><i class="bi bi-database me-1"></i>知识库</label>
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="use-faiss" checked />
-        <label class="form-check-label small" for="use-faiss">结构化知识库（FAISS）</label>
+      <!-- User profile card -->
+      <div class="sidebar-user-card">
+        <div class="sidebar-avatar" id="sidebar-avatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="sidebar-display-name">—</div>
+          <div class="uid" id="sidebar-user-id">—</div>
+        </div>
       </div>
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="use-chroma" />
-        <label class="form-check-label small" for="use-chroma">动态笔记库（Chroma）</label>
+
+      <!-- Settings section -->
+      <div class="sidebar-section">
+        <div class="sidebar-label"><i class="bi bi-gear me-1"></i>设置</div>
+
+        <div class="mb-2">
+          <label class="form-label fw-semibold small mb-1 d-flex align-items-center gap-1">
+            <i class="bi bi-hdd-network text-primary"></i> 后端地址
+          </label>
+          <input id="backend-url" type="text" class="form-control form-control-sm" value="http://localhost:8000" />
+        </div>
+
+        <div class="mb-2">
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" id="use-stream" checked />
+            <label class="form-check-label small" for="use-stream">
+              <i class="bi bi-lightning-charge text-warning me-1"></i>流式输出（SSE）
+            </label>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Stream toggle -->
-    <div class="mb-3">
-      <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="use-stream" checked />
-        <label class="form-check-label small" for="use-stream">流式输出（SSE）</label>
+      <!-- Knowledge base section -->
+      <div class="sidebar-section">
+        <div class="sidebar-label"><i class="bi bi-database me-1"></i>知识库</div>
+        <div class="form-check form-switch mb-1">
+          <input class="form-check-input" type="checkbox" id="use-faiss" checked />
+          <label class="form-check-label small" for="use-faiss">结构化知识库（FAISS）</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="use-chroma" />
+          <label class="form-check-label small" for="use-chroma">动态笔记库（Chroma）</label>
+        </div>
       </div>
+
+      <hr class="my-2" />
+
+      <!-- History section -->
+      <div class="sidebar-section" style="flex:1;min-height:0;">
+        <div class="sidebar-label"><i class="bi bi-clock-history me-1"></i>历史问题</div>
+        <ul id="history-list" class="list-group list-group-flush small" style="overflow-y:auto;max-height:200px;"></ul>
+      </div>
+
+      <hr class="my-2" />
+      <button id="clear-btn" class="btn btn-outline-secondary btn-sm w-100">
+        <i class="bi bi-trash me-1"></i>清除对话
+      </button>
     </div>
-
-    <hr class="my-2" />
-
-    <!-- Chat history list -->
-    <div class="fw-semibold small mb-1"><i class="bi bi-clock-history me-1"></i>历史问题</div>
-    <ul id="history-list" class="list-group list-group-flush small" style="overflow-y:auto;flex:1;"></ul>
-
-    <hr class="my-2" />
-    <button id="clear-btn" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-trash me-1"></i>清除对话</button>
   </aside>
 
   <!-- Main content -->
@@ -136,9 +304,9 @@
         </div>
       </div>
 
-      <div id="input-area" class="d-flex gap-2 align-items-end">
-        <textarea id="qa-input" class="form-control form-control-sm" rows="2"
-          placeholder="输入问题，按 Enter 发送（Shift+Enter 换行）…" style="resize:none;"></textarea>
+      <div class="input-bar">
+        <textarea id="qa-input" rows="2"
+          placeholder="输入问题，按 Enter 发送（Shift+Enter 换行）…"></textarea>
         <button id="qa-send" class="btn btn-primary btn-sm px-3">
           <i class="bi bi-send-fill"></i>
         </button>
@@ -149,9 +317,9 @@
     <div id="mode-practice" class="d-flex flex-column h-100 hidden">
       <!-- Question display -->
       <div id="question-card">
-        <div class="card border-primary">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span class="fw-semibold"><i class="bi bi-question-circle me-1"></i>当前题目</span>
+        <div class="card" style="border-color: var(--border); border-radius: 10px;">
+          <div class="card-header d-flex justify-content-between align-items-center" style="background:var(--surface-2);">
+            <span class="fw-semibold small"><i class="bi bi-question-circle me-1 text-primary"></i>当前题目</span>
             <div class="d-flex gap-2 align-items-center">
               <select id="practice-subject" class="form-select form-select-sm" style="width:auto;">
                 <option value="">全部学科</option>
@@ -171,10 +339,10 @@
       </div>
 
       <!-- Practice chat / grading results -->
-      <div id="practice-chat-box" class="flex-grow-1 overflow-y-auto px-3 pb-2" style="overflow-y:auto;"></div>
+      <div id="practice-chat-box" class="flex-grow-1 px-3 pb-2" style="overflow-y:auto; background:var(--surface-2);"></div>
 
       <!-- Grade result area -->
-      <div id="grade-area" class="hidden border-top px-3 py-2 bg-light">
+      <div id="grade-area" class="hidden" style="border-top:1px solid var(--border);padding:10px 16px;background:var(--surface-2);">
         <div class="row g-2 align-items-start">
           <div class="col-auto">
             <span id="grade-badge" class="badge fs-6"></span>
@@ -190,9 +358,9 @@
         </div>
       </div>
 
-      <div id="input-area" class="d-flex gap-2 align-items-end" style="border-top:1px solid #dee2e6;padding:10px 16px;background:#fff;">
-        <textarea id="practice-input" class="form-control form-control-sm" rows="2"
-          placeholder="输入你的答案… Enter 提交，Shift+Enter 换行" style="resize:none;"></textarea>
+      <div class="input-bar">
+        <textarea id="practice-input" rows="2"
+          placeholder="输入你的答案… Enter 提交，Shift+Enter 换行"></textarea>
         <button id="practice-send" class="btn btn-success btn-sm px-3">
           <i class="bi bi-check2-circle"></i>
         </button>
@@ -202,29 +370,39 @@
     <!-- ======== DIAGNOSIS MODE ======== -->
     <div id="mode-diagnosis" class="d-flex flex-column h-100 hidden">
       <div id="diagnosis-panel">
-        <div class="d-flex gap-2 mb-3">
-          <button id="run-diagnosis-btn" class="btn btn-warning">
+        <div class="d-flex gap-2 mb-3 align-items-center">
+          <button id="run-diagnosis-btn" class="btn btn-warning btn-sm">
             <i class="bi bi-play-circle me-1"></i>运行学习诊断
           </button>
-          <select id="diag-subject" class="form-select w-auto">
+          <select id="diag-subject" class="form-select form-select-sm w-auto">
             <option value="">全部学科</option>
             <option value="数学">数学</option>
             <option value="政治">政治</option>
             <option value="英语">英语</option>
           </select>
-          <div id="diag-loading" class="spinner-border spinner-border-sm text-warning align-self-center hidden" role="status"></div>
+          <div id="diag-loading" class="spinner-border spinner-border-sm text-warning hidden" role="status"></div>
         </div>
 
         <div id="diag-result" class="hidden">
           <!-- Report -->
-          <div class="card mb-3">
-            <div class="card-header fw-semibold"><i class="bi bi-file-text me-1"></i>诊断报告</div>
+          <div class="card mb-3" style="border-radius:10px;">
+            <div class="card-header fw-semibold small" style="background:var(--surface-2);">
+              <i class="bi bi-file-text me-1 text-primary"></i>诊断报告
+            </div>
             <div class="card-body small" id="diag-report" style="white-space:pre-wrap;"></div>
           </div>
 
+          <!-- Weak points chart -->
+          <div id="diag-chart-wrap" class="hidden">
+            <div class="fw-semibold small mb-3"><i class="bi bi-bar-chart-line me-1 text-danger"></i>薄弱知识点准确率</div>
+            <canvas id="diag-chart" height="200"></canvas>
+          </div>
+
           <!-- Weak points table -->
-          <div class="card mb-3">
-            <div class="card-header fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>薄弱知识点</div>
+          <div class="card mb-3" style="border-radius:10px;">
+            <div class="card-header fw-semibold small" style="background:var(--surface-2);">
+              <i class="bi bi-exclamation-triangle me-1 text-danger"></i>薄弱知识点
+            </div>
             <div class="card-body p-0">
               <table class="table table-sm table-hover mb-0" id="weak-points-table">
                 <thead class="table-light">
@@ -236,8 +414,10 @@
           </div>
 
           <!-- Recommended questions -->
-          <div class="card mb-3">
-            <div class="card-header fw-semibold"><i class="bi bi-collection me-1"></i>推荐练习题</div>
+          <div class="card mb-3" style="border-radius:10px;">
+            <div class="card-header fw-semibold small" style="background:var(--surface-2);">
+              <i class="bi bi-collection me-1 text-primary"></i>推荐练习题
+            </div>
             <div class="card-body p-0">
               <table class="table table-sm table-hover mb-0" id="rec-questions-table">
                 <thead class="table-light">
@@ -249,8 +429,10 @@
           </div>
 
           <!-- Recommended notes -->
-          <div class="card mb-3">
-            <div class="card-header fw-semibold"><i class="bi bi-journals me-1"></i>推荐参考笔记</div>
+          <div class="card mb-3" style="border-radius:10px;">
+            <div class="card-header fw-semibold small" style="background:var(--surface-2);">
+              <i class="bi bi-journals me-1 text-success"></i>推荐参考笔记
+            </div>
             <div class="card-body p-0">
               <table class="table table-sm table-hover mb-0" id="rec-notes-table">
                 <thead class="table-light">
@@ -270,6 +452,79 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ============================================================
+// Auth guard – redirect to login if not authenticated
+// ============================================================
+(function() {
+  const token = localStorage.getItem('auth_token');
+  const userId = localStorage.getItem('user_id');
+  if (!token || !userId) {
+    window.location.replace('login.html');
+  }
+})();
+
+// ============================================================
+// Populate navbar / sidebar user info
+// ============================================================
+const _userId      = localStorage.getItem('user_id');
+const _displayName = localStorage.getItem('display_name') || _userId;
+const _initials    = localStorage.getItem('user_initials') || (_displayName ? _displayName.charAt(0) : '?');
+const _subject     = localStorage.getItem('user_subject')  || '';
+
+document.getElementById('nav-avatar').textContent       = _initials;
+document.getElementById('nav-user-name').textContent    = _displayName;
+document.getElementById('sidebar-avatar').textContent   = _initials;
+document.getElementById('sidebar-display-name').textContent = _displayName;
+document.getElementById('sidebar-user-id').textContent  = _userId + (_subject ? ' · ' + _subject : '');
+
+// Logout
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_id');
+  localStorage.removeItem('display_name');
+  localStorage.removeItem('user_subject');
+  localStorage.removeItem('user_initials');
+  window.location.replace('login.html');
+});
+
+// Sidebar collapse toggle
+document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+// ============================================================
+// marked.js configuration (graceful fallback if CDN blocked)
+// ============================================================
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: false });
+}
+
+// Simple HTML sanitizer to prevent XSS in rendered Markdown
+function sanitizeHtml(dirty) {
+  const template = document.createElement('template');
+  template.innerHTML = dirty;
+  const FORBIDDEN_TAGS = ['script', 'iframe', 'object', 'embed', 'form', 'link', 'meta', 'base'];
+  FORBIDDEN_TAGS.forEach(tag => {
+    template.content.querySelectorAll(tag).forEach(el => el.remove());
+  });
+  template.content.querySelectorAll('*').forEach(el => {
+    Array.from(el.attributes).forEach(attr => {
+      if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
+      if (attr.name === 'href' && /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+      if (attr.name === 'src' && /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+    });
+  });
+  return template.innerHTML;
+}
+
+function renderMarkdown(text) {
+  if (typeof marked !== 'undefined') {
+    return sanitizeHtml(marked.parse(text));
+  }
+  // Fallback: escape HTML and preserve line breaks
+  return escHtml(text).replace(/\n/g, '<br>');
+}
+
+// ============================================================
 // State
 // ============================================================
 const state = {
@@ -278,7 +533,7 @@ const state = {
   practiceMessages: [], // Practice conversation history
   currentQuestion: null,
   quizHistory: [],
-  userId: 'user_001',
+  userId: _userId,
 };
 
 // ============================================================
@@ -302,20 +557,28 @@ document.getElementById('backend-url').addEventListener('input', e => {
 document.getElementById('mode-tabs').addEventListener('click', e => {
   const btn = e.target.closest('[data-mode]');
   if (!btn) return;
-  const mode = btn.dataset.mode;
-  switchMode(mode);
+  switchMode(btn.dataset.mode);
 });
 
 function switchMode(mode) {
   state.mode = mode;
   document.querySelectorAll('#mode-tabs [data-mode]').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
-    b.classList.toggle('btn-light', b.dataset.mode === mode);
-    b.classList.toggle('btn-outline-light', b.dataset.mode !== mode);
   });
   document.getElementById('mode-qa').classList.toggle('hidden', mode !== 'qa');
   document.getElementById('mode-practice').classList.toggle('hidden', mode !== 'practice');
   document.getElementById('mode-diagnosis').classList.toggle('hidden', mode !== 'diagnosis');
+}
+
+// ============================================================
+// Subject color helper
+// ============================================================
+function subjectTagHtml(subject) {
+  if (!subject) return '';
+  const cls = subject === '数学' ? 'subject-math' :
+              subject === '政治' ? 'subject-politics' :
+              subject === '英语' ? 'subject-english' : 'subject-default';
+  return `<span class="subject-tag ${cls}">${escHtml(subject)}</span>`;
 }
 
 // ============================================================
@@ -324,10 +587,17 @@ function switchMode(mode) {
 function appendMessage(box, role, content) {
   const wrap = document.createElement('div');
   wrap.className = `msg-${role}`;
-  wrap.innerHTML = `<div class="msg-bubble">${escHtml(content)}</div>`;
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (role === 'assistant') {
+    bubble.innerHTML = renderMarkdown(content);
+  } else {
+    bubble.textContent = content;
+  }
+  wrap.appendChild(bubble);
   box.appendChild(wrap);
   box.scrollTop = box.scrollHeight;
-  return wrap.querySelector('.msg-bubble');
+  return bubble;
 }
 
 function appendTypingIndicator(box) {
@@ -390,7 +660,7 @@ async function sendQA() {
 }
 
 async function sendQASync(text) {
-  const indicator = appendTypingIndicator(chatBox);
+  appendTypingIndicator(chatBox);
   try {
     const resp = await fetch(apiUrl('/api/answer'), {
       method: 'POST',
@@ -405,7 +675,7 @@ async function sendQASync(text) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     removeTypingIndicator();
-    const bubble = appendMessage(chatBox, 'assistant', data.answer);
+    appendMessage(chatBox, 'assistant', data.answer);
     state.messages.push({ role: 'assistant', content: data.answer });
     renderResults(data.citations, data.recommendations);
   } catch (err) {
@@ -415,7 +685,7 @@ async function sendQASync(text) {
 }
 
 async function sendQAStream(text) {
-  const indicator = appendTypingIndicator(chatBox);
+  appendTypingIndicator(chatBox);
   let fullText = '';
   let bubble = null;
 
@@ -433,7 +703,6 @@ async function sendQAStream(text) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     removeTypingIndicator();
-    // Create empty assistant bubble to stream into
     const wrap = document.createElement('div');
     wrap.className = 'msg-assistant';
     wrap.innerHTML = '<div class="msg-bubble"></div>';
@@ -449,14 +718,14 @@ async function sendQAStream(text) {
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line
+      buffer = lines.pop();
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           try {
             const payload = JSON.parse(line.slice(6));
             if (payload.token) {
               fullText += payload.token;
-              bubble.textContent = fullText;
+              bubble.innerHTML = renderMarkdown(fullText);
               chatBox.scrollTop = chatBox.scrollHeight;
             }
           } catch {}
@@ -492,7 +761,7 @@ function renderResults(citations, recommendations) {
     recommendations.forEach(r => {
       const div = document.createElement('div');
       div.className = 'border rounded p-1 mb-1 small';
-      div.innerHTML = `<span class="badge bg-info me-1">${escHtml(r.subject)}</span>${escHtml(r.content_snippet.slice(0,80))}…`;
+      div.innerHTML = `${subjectTagHtml(r.subject)} ${escHtml(r.content_snippet.slice(0,80))}…`;
       recList.appendChild(div);
     });
   } else {
@@ -526,7 +795,6 @@ async function loadQuestion() {
     const q = await resp.json();
     state.currentQuestion = q;
     renderQuestion(q);
-    // Clear practice chat
     practiceChat.innerHTML = '';
     document.getElementById('grade-area').classList.add('hidden');
   } catch (err) {
@@ -537,10 +805,12 @@ async function loadQuestion() {
 
 function renderQuestion(q) {
   const body = document.getElementById('question-body');
-  const kp = (q.knowledge_points || []).map(k => `<span class="badge bg-light text-dark border me-1">${escHtml(k)}</span>`).join('');
+  const kp = (q.knowledge_points || []).map(k =>
+    `<span class="badge bg-light text-dark border me-1">${escHtml(k)}</span>`
+  ).join('');
   body.innerHTML = `
-    <div class="d-flex gap-2 mb-2 flex-wrap">
-      <span class="badge bg-primary">${escHtml(q.subject)}</span>
+    <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
+      ${subjectTagHtml(q.subject)}
       ${q.year ? `<span class="badge bg-secondary">${q.year}年</span>` : ''}
       ${q.question_type ? `<span class="badge bg-info text-dark">${escHtml(q.question_type)}</span>` : ''}
       ${kp}
@@ -562,7 +832,7 @@ async function submitAnswer() {
 }
 
 async function submitAnswerSync(text) {
-  const indicator = appendTypingIndicator(practiceChat);
+  appendTypingIndicator(practiceChat);
   try {
     const resp = await fetch(apiUrl('/api/practice'), {
       method: 'POST',
@@ -589,7 +859,7 @@ async function submitAnswerSync(text) {
 }
 
 async function submitAnswerStream(text) {
-  const indicator = appendTypingIndicator(practiceChat);
+  appendTypingIndicator(practiceChat);
   let fullText = '';
 
   try {
@@ -638,7 +908,7 @@ async function submitAnswerStream(text) {
               followups   = payload.followup_questions || [];
             } else if (eventType === 'token' && payload.token) {
               fullText += payload.token;
-              bubble.textContent = fullText;
+              bubble.innerHTML = renderMarkdown(fullText);
               practiceChat.scrollTop = practiceChat.scrollHeight;
             }
           } catch {}
@@ -689,6 +959,8 @@ function renderGradeResult(grade, followups) {
 // ============================================================
 // DIAGNOSIS MODE
 // ============================================================
+let diagChart = null;
+
 document.getElementById('run-diagnosis-btn').addEventListener('click', runDiagnosis);
 
 async function runDiagnosis() {
@@ -704,7 +976,7 @@ async function runDiagnosis() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: document.getElementById('user-select').value,
+        user_id: state.userId,
         subject: subject || null,
       }),
     });
@@ -721,15 +993,52 @@ async function runDiagnosis() {
 function renderDiagnosis(data) {
   document.getElementById('diag-report').textContent = data.report || '';
 
-  // Weak points
+  // Weak points chart
+  const weakPoints = data.weak_points || [];
+  const chartWrap = document.getElementById('diag-chart-wrap');
+  if (weakPoints.length > 0 && typeof Chart !== 'undefined') {
+    chartWrap.classList.remove('hidden');
+    const labels = weakPoints.map(wp => wp.knowledge_point);
+    const values = weakPoints.map(wp => Math.round(wp.accuracy * 100));
+    const colors = weakPoints.map(wp =>
+      wp.priority === 'high'   ? 'rgba(239,68,68,0.8)'  :
+      wp.priority === 'medium' ? 'rgba(245,158,11,0.8)' : 'rgba(16,185,129,0.8)'
+    );
+    const ctx = document.getElementById('diag-chart').getContext('2d');
+    if (diagChart) diagChart.destroy();
+    diagChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '准确率 (%)',
+          data: values,
+          backgroundColor: colors,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { min: 0, max: 100, ticks: { callback: v => v + '%' } },
+        },
+      },
+    });
+  } else {
+    chartWrap.classList.add('hidden');
+  }
+
+  // Weak points table
   const wpTbody = document.querySelector('#weak-points-table tbody');
   wpTbody.innerHTML = '';
-  (data.weak_points || []).forEach(wp => {
+  weakPoints.forEach(wp => {
     const tr = document.createElement('tr');
     const priorityClass = wp.priority === 'high' ? 'text-danger fw-bold' : wp.priority === 'medium' ? 'text-warning' : '';
     tr.innerHTML = `
       <td>${escHtml(wp.knowledge_point)}</td>
-      <td>${escHtml(wp.subject)}</td>
+      <td>${subjectTagHtml(wp.subject)}</td>
       <td>${(wp.accuracy * 100).toFixed(0)}%</td>
       <td>${wp.total_attempts}</td>
       <td class="${priorityClass}">${escHtml(wp.priority)}</td>`;
@@ -743,7 +1052,7 @@ function renderDiagnosis(data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${q.id}</td>
-      <td>${escHtml(q.subject)}</td>
+      <td>${subjectTagHtml(q.subject)}</td>
       <td>${escHtml(q.knowledge_point || '')}</td>
       <td>${escHtml(q.difficulty_level || '')}</td>
       <td class="text-truncate" style="max-width:240px;" title="${escHtml(q.content)}">${escHtml(q.content.slice(0,60))}…</td>`;
@@ -757,7 +1066,7 @@ function renderDiagnosis(data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="text-truncate" style="max-width:100px;">${escHtml(n.doc_id)}</td>
-      <td>${escHtml(n.subject)}</td>
+      <td>${subjectTagHtml(n.subject)}</td>
       <td>${escHtml(n.note_type)}</td>
       <td class="text-truncate" style="max-width:240px;" title="${escHtml(n.content_snippet)}">${escHtml(n.content_snippet.slice(0,80))}…</td>`;
     rnTbody.appendChild(tr);
@@ -779,23 +1088,6 @@ document.getElementById('clear-btn').addEventListener('click', () => {
   document.getElementById('grade-area').classList.add('hidden');
   document.getElementById('history-list').innerHTML = '';
 });
-
-// ============================================================
-// User selector sync
-// ============================================================
-document.getElementById('user-select').addEventListener('change', e => {
-  state.userId = e.target.value;
-});
-
-// ============================================================
-// Initial welcome message
-// ============================================================
-appendMessage(chatBox, 'assistant',
-  '👋 欢迎使用考研智能辅导系统！\n\n' +
-  '• 问答模式：直接输入知识点问题，获取 RAG 解答\n' +
-  '• 刷题模式：切换至「刷题」tab，点击「换题」开始练习\n' +
-  '• 诊断模式：切换至「诊断」tab，运行学习诊断\n\n' +
-  '如需流式输出，请确保勾选「流式输出（SSE）」。');
 </script>
 </body>
 </html>
