@@ -152,9 +152,17 @@
         <div class="card border-primary">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span class="fw-semibold"><i class="bi bi-question-circle me-1"></i>当前题目</span>
-            <button id="next-question-btn" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-arrow-right-circle me-1"></i>换题
-            </button>
+            <div class="d-flex gap-2 align-items-center">
+              <select id="practice-subject" class="form-select form-select-sm" style="width:auto;">
+                <option value="">全部学科</option>
+                <option value="数学">数学</option>
+                <option value="政治">政治</option>
+                <option value="英语">英语</option>
+              </select>
+              <button id="next-question-btn" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-right-circle me-1"></i>换题
+              </button>
+            </div>
           </div>
           <div class="card-body" id="question-body">
             <div class="text-muted small">点击「换题」加载一道题目…</div>
@@ -509,7 +517,11 @@ practiceSend.addEventListener('click', submitAnswer);
 
 async function loadQuestion() {
   try {
-    const resp = await fetch(apiUrl('/api/practice/question'));
+    const subject = document.getElementById('practice-subject').value;
+    const url = subject
+      ? apiUrl('/api/practice/question') + '?subject=' + encodeURIComponent(subject)
+      : apiUrl('/api/practice/question');
+    const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const q = await resp.json();
     state.currentQuestion = q;
