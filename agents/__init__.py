@@ -14,6 +14,12 @@ from agents.quiz_agent import (
     create_quiz_node,
     run_quiz,
 )
+from agents.rag_agent import (
+    RAGAgent,
+    RAGState,
+    create_rag_graph,
+    run_rag,
+)
 
 __all__ = [
     "Mode",
@@ -26,4 +32,8 @@ __all__ = [
     "create_quiz_graph",
     "create_quiz_node",
     "run_quiz",
+    "RAGAgent",
+    "RAGState",
+    "create_rag_graph",
+    "run_rag",
 ]
