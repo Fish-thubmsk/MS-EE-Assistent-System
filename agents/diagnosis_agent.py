@@ -37,13 +37,26 @@ from typing_extensions import TypedDict
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# 路径常量
+# 路径常量  (env-var overrideable; fall back to CWD-relative defaults)
 # ---------------------------------------------------------------------------
 
-_HERE = Path(__file__).parent
-_REPO_ROOT = _HERE.parent
-_DB_PATH = _REPO_ROOT / "datebase" / "knowledge_base.db"
-_MOCK_HISTORY_PATH = _REPO_ROOT / "mock_notes" / "mock_user_history.json"
+_REPO_ROOT = Path(os.environ.get("REPO_ROOT", os.getcwd()))
+_DB_PATH = Path(
+    os.path.abspath(
+        os.environ.get(
+            "KNOWLEDGE_DB_PATH",
+            str(_REPO_ROOT / "datebase" / "knowledge_base.db"),
+        )
+    )
+)
+_MOCK_HISTORY_PATH = Path(
+    os.path.abspath(
+        os.environ.get(
+            "MOCK_HISTORY_PATH",
+            str(_REPO_ROOT / "mock_notes" / "mock_user_history.json"),
+        )
+    )
+)
 
 # 薄弱点判定阈值（准确率低于此值视为薄弱）
 WEAK_THRESHOLD: float = 0.6

@@ -29,7 +29,10 @@ from utils.sf_retry import call_with_retry, get_sf_timeout
 
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/embeddings"
 EMBEDDING_MODEL = "BAAI/bge-m3"
-DEFAULT_CHROMA_DIR = str(Path(__file__).parent.parent / "chroma_userdata")
+# CWD-relative default; overrideable via CHROMA_PERSIST_DIRECTORY env var
+DEFAULT_CHROMA_DIR = os.path.abspath(
+    os.environ.get("CHROMA_PERSIST_DIRECTORY", os.path.join(os.getcwd(), "chroma_userdata"))
+)
 DEFAULT_COLLECTION = "user_notes"
 
 

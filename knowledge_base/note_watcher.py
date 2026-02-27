@@ -87,11 +87,17 @@ def watch(
 
     Args:
         notes_dir: 笔记目录路径（相对或绝对）。
-        persist_dir: ChromaDB 持久化目录；默认 chroma_userdata/。
+        persist_dir: ChromaDB 持久化目录；默认读取 CHROMA_PERSIST_DIRECTORY
+                     环境变量，若未设置则使用当前工作目录下的 chroma_userdata/。
         once: 若为 True，扫描一次后退出。
     """
     if persist_dir is None:
-        persist_dir = str(Path(__file__).parent.parent / "chroma_userdata")
+        persist_dir = os.path.abspath(
+            os.environ.get(
+                "CHROMA_PERSIST_DIRECTORY",
+                os.path.join(os.getcwd(), "chroma_userdata"),
+            )
+        )
 
     manager = ChromaManager(persist_dir=persist_dir)
     state_path = Path(persist_dir) / STATE_FILE_NAME

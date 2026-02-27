@@ -26,11 +26,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------------------------
-# Paths
+# Paths  (env-var overrideable; fall back to CWD-relative defaults so the
+#         project works regardless of how the script is packaged or moved)
 # ---------------------------------------------------------------------------
-_HERE = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(_HERE, "..", "datebase", "knowledge_base.db")
-INDEX_DIR = os.path.join(_HERE, "faiss_index")
+_REPO_ROOT = os.getcwd()
+DB_PATH = os.path.abspath(
+    os.environ.get(
+        "KNOWLEDGE_DB_PATH",
+        os.path.join(_REPO_ROOT, "datebase", "knowledge_base.db"),
+    )
+)
+INDEX_DIR = os.path.abspath(
+    os.environ.get(
+        "FAISS_INDEX_DIR",
+        os.path.join(_REPO_ROOT, "knowledge_base", "faiss_index"),
+    )
+)
 INDEX_FILE = os.path.join(INDEX_DIR, "questions.index")
 ID_MAP_FILE = os.path.join(INDEX_DIR, "id_map.json")
 

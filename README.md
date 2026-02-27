@@ -206,7 +206,42 @@ docker compose up -d backend   # 重启后端容器
 
 ---
 
-## 📝 动态知识库模块（ChromaDB 增量更新）
+## 🔍 FAISS 向量索引
+
+FAISS 索引文件（`knowledge_base/faiss_index/`）是运行时生成的二进制产物，**不随仓库分发**。首次使用知识库检索前需手动构建。
+
+### 构建索引
+
+> 前提：已配置 `SILICONFLOW_API_KEY`（用于 Embedding API 调用）并已就绪 SQLite 题库（`datebase/knowledge_base.db`）。
+
+```bash
+# 从项目根目录运行（默认构建所有学科）
+python knowledge_base/build_faiss_index.py
+
+# 仅构建某学科
+python knowledge_base/build_faiss_index.py --subject 政治
+
+# 查看全部选项
+python knowledge_base/build_faiss_index.py --help
+```
+
+构建完成后索引文件保存于 `knowledge_base/faiss_index/`（`questions.index` + `id_map.json`），后续无需重复构建（脚本支持增量更新）。
+
+### 路径配置
+
+所有路径均通过环境变量配置，无硬编码绝对路径，项目移动或重命名目录后无需修改代码：
+
+| 环境变量 | 说明 | 默认值（相对项目根目录） |
+|----------|------|--------------------------|
+| `FAISS_INDEX_DIR` | FAISS 索引目录 | `knowledge_base/faiss_index` |
+| `KNOWLEDGE_DB_PATH` | SQLite 知识库路径 | `datebase/knowledge_base.db` |
+| `CHROMA_PERSIST_DIRECTORY` | ChromaDB 持久化目录 | `chroma_userdata` |
+
+以上变量可在 `.env` 文件中配置（复制 `.env.example` 为 `.env` 后编辑）。
+
+---
+
+
 
 本模块实现了基于 ChromaDB 的动态个人知识库，支持用户笔记、错题的增量向量化与检索。
 
