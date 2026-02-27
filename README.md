@@ -31,7 +31,7 @@ newrepo/
 | **静态知识库** | SQLite + FAISS | 题库元数据精确查询 + 语义向量检索；Embedding 使用 BAAI/bge-m3，经由 SiliconFlow API 调用 |
 | **动态知识库** | ChromaDB | 用户笔记、错题等个人私域数据的实时增量更新 |
 | **Agent 工作流** | LangGraph | 多模式 Agent（问答、刷题、分析等），节点化流程编排 |
-| **LLM / Embedding** | SiliconFlow API（DeepSeek-V3 推荐） | 统一通过 SiliconFlow API 对接，支持推理与向量化；模型由 `LLM_MODEL` 环境变量配置 |
+| **LLM / Embedding** | SiliconFlow API（DeepSeek-R1） | 统一通过 SiliconFlow API 对接，支持推理与向量化 |
 | **部署** | Docker | 容器化部署，各服务独立可扩展 |
 
 ---
@@ -47,10 +47,6 @@ newrepo/
 ```bash
 cp .env.example .env
 # 用编辑器打开 .env，填写 SILICONFLOW_API_KEY 等参数
-# ⚠️  必须配置 LLM_MODEL，未填写将导致服务启动报错
-# 推荐配置（响应快、成本低）：
-#   SILICONFLOW_API_KEY=<your_key>
-#   LLM_MODEL=deepseek-ai/DeepSeek-V3
 # 若无 API Key，保持默认即可（系统自动降级为 mock 模式）
 ```
 

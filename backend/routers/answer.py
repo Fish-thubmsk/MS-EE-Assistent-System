@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from agents.rag_agent import (
+    DEFAULT_LLM_MODEL,
     DEFAULT_N_CHROMA,
     DEFAULT_N_FAISS,
     SILICONFLOW_BASE_URL,
