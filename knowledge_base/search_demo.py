@@ -98,17 +98,21 @@ def _load_index():
 # Public API
 # ---------------------------------------------------------------------------
 
-def search(query: str, top_k: int = 5) -> list:
-    """Search the FAISS index for questions similar to *query*.
+def search(query: str, top_k: int = 5, source_table: str = None) -> list:
+    """Search the FAISS index for documents similar to *query*.
 
     Args:
-        query:  Natural-language query string.
-        top_k:  Number of results to return.
+        query:        Natural-language query string.
+        top_k:        Number of results to return.
+        source_table: Optional filter; "questions" or "passages".
 
     Returns:
-        List of dicts with keys:
-            id, subject, year, question_type, content, correct_answer,
-            score (cosine similarity), vector_id (FAISS position).
+        List of dicts.  Questions include keys:
+            doc_id, source_table, id, subject, year, question_type,
+            content, correct_answer, score, vector_id.
+        Passages include keys:
+            doc_id, source_table, id, year, passage_title, content,
+            score, vector_id.
     """
     index, id_map = _load_index()
     query_vec = _get_query_embedding(query)
@@ -122,26 +126,62 @@ def search(query: str, top_k: int = 5) -> list:
     for score, idx in zip(scores[0], indices[0]):
         if idx < 0 or idx >= len(id_map):
             continue
-        qid = id_map[idx]
-        cursor.execute(
-            "SELECT id, subject, year, question_type, content, correct_answer "
-            "FROM questions WHERE id = ?",
-            (qid,),
-        )
-        row = cursor.fetchone()
-        if row:
-            results.append(
-                {
-                    "id": row[0],
-                    "subject": row[1],
-                    "year": row[2],
-                    "question_type": row[3],
-                    "content": row[4],
-                    "correct_answer": row[5],
-                    "score": float(score),
-                    "vector_id": int(idx),
-                }
+        entry = id_map[idx]
+        # Support both new dict format and legacy int format
+        if isinstance(entry, dict):
+            doc_id = entry["doc_id"]
+            src_table = entry["source_table"]
+        else:
+            doc_id = f"q_{entry}"
+            src_table = "questions"
+
+        if source_table and src_table != source_table:
+            continue
+
+        if src_table == "questions":
+            raw_id = int(doc_id[2:])  # "q_5" -> 5
+            cursor.execute(
+                "SELECT id, subject, year, question_type, content, correct_answer "
+                "FROM questions WHERE id = ?",
+                (raw_id,),
             )
+            row = cursor.fetchone()
+            if row:
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "source_table": src_table,
+                        "id": row[0],
+                        "subject": row[1],
+                        "year": row[2],
+                        "question_type": row[3],
+                        "content": row[4],
+                        "correct_answer": row[5],
+                        "score": float(score),
+                        "vector_id": int(idx),
+                    }
+                )
+        elif src_table == "passages":
+            raw_id = int(doc_id[2:])  # "p_3" -> 3
+            cursor.execute(
+                "SELECT id, year, passage_title, passage_text "
+                "FROM passages WHERE id = ?",
+                (raw_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "source_table": src_table,
+                        "id": row[0],
+                        "year": row[1],
+                        "passage_title": row[2],
+                        "content": row[3],
+                        "score": float(score),
+                        "vector_id": int(idx),
+                    }
+                )
 
     conn.close()
     return results
@@ -153,11 +193,17 @@ def search(query: str, top_k: int = 5) -> list:
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Search for similar exam questions using FAISS vector index."
+        description="Search for similar exam questions and passages using FAISS vector index."
     )
     parser.add_argument("query", help="Natural-language query string.")
     parser.add_argument(
         "--top-k", type=int, default=5, help="Number of results to return (default: 5)."
+    )
+    parser.add_argument(
+        "--source-table",
+        default=None,
+        choices=["questions", "passages"],
+        help="Restrict results to a specific source table.",
     )
     return parser.parse_args()
 
@@ -166,14 +212,16 @@ if __name__ == "__main__":
     args = _parse_args()
     print(f'Searching for: {args.query!r}  (top-{args.top_k})\n{"─" * 60}')
 
-    results = search(args.query, top_k=args.top_k)
+    results = search(args.query, top_k=args.top_k, source_table=args.source_table)
     if not results:
         print("No results found.")
     else:
         for rank, r in enumerate(results, 1):
             snippet = r["content"][:120].replace("\n", " ")
+            subject = r.get("subject", "阅读材料")
+            src = r.get("source_table", "questions")
             print(
-                f'{rank}. [{r["subject"]} {r["year"]}] '
+                f'{rank}. [{subject} {r["year"]}] [{src}] '
                 f'score={r["score"]:.4f}  id={r["id"]}'
             )
             print(f'   {snippet}…\n')

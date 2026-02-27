@@ -1,5 +1,5 @@
 """
-Build a FAISS vector index from questions in knowledge_base.db.
+Build a FAISS vector index from questions and passages in knowledge_base.db.
 
 Usage:
     python knowledge_base/build_faiss_index.py [--subject 政治] [--batch-size 32]
@@ -8,8 +8,10 @@ Environment variables:
     SILICONFLOW_API_KEY  — required; your SiliconFlow API key
     SILICONFLOW_API_URL  — optional; defaults to https://api.siliconflow.cn/v1/embeddings
 
-The script supports incremental (checkpoint) builds: already-indexed questions
-(those whose id already appears in the saved id_map.json) are skipped.
+The script supports incremental (checkpoint) builds: already-indexed documents
+(those whose doc_id already appears in the saved id_map.json) are skipped.
+
+id_map.json format: list of dicts {"doc_id": "q_<id>" | "p_<id>", "source_table": "questions" | "passages"}
 """
 
 import argparse
@@ -121,7 +123,8 @@ def load_or_create_index(dim: int = EMBEDDING_DIM):
     """Load an existing FAISS index + id_map, or create a fresh one.
 
     Returns:
-        (faiss.Index, list[int]) — index and ordered list of question ids
+        (faiss.Index, list[dict]) — index and ordered list of
+        {"doc_id": "q_<id>" | "p_<id>", "source_table": "questions" | "passages"} entries.
     """
     os.makedirs(INDEX_DIR, exist_ok=True)
 
@@ -161,8 +164,9 @@ def build_index(
 
     Args:
         subject:    Filter by subject (e.g. '政治', '数学', '英语').
-                    *None* means all subjects.
-        batch_size: Number of questions sent to the embedding API per request.
+                    *None* means all subjects; passages are always indexed
+                    unless subject is set to a non-English value.
+        batch_size: Number of documents sent to the embedding API per request.
         api_key:    Override SILICONFLOW_API_KEY env var.
         api_url:    Override SILICONFLOW_API_URL env var.
     """
@@ -171,27 +175,46 @@ def build_index(
 
     # Load (or create) the index
     index, id_map = load_or_create_index()
-    indexed_ids: set = set(id_map)
+    indexed_ids: set = {entry["doc_id"] for entry in id_map}
 
     # Fetch active questions that have content
-    query = (
+    q_query = (
         "SELECT id, content FROM questions "
         "WHERE is_active = 1 AND content IS NOT NULL"
     )
-    params: list = []
+    q_params: list = []
     if subject:
-        query += " AND subject = ?"
-        params.append(subject)
-    query += " ORDER BY id"
+        q_query += " AND subject = ?"
+        q_params.append(subject)
+    q_query += " ORDER BY id"
 
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
+    cursor.execute(q_query, q_params)
+    q_rows = cursor.fetchall()
 
-    # Only process questions not yet in our index
-    to_index = [(qid, content) for qid, content in rows if qid not in indexed_ids]
+    # Fetch passages (English reading articles).
+    # Skip when a non-English subject filter is explicitly set.
+    p_rows = []
+    if subject is None or subject == "英语":
+        cursor.execute(
+            "SELECT id, passage_text FROM passages "
+            "WHERE passage_text IS NOT NULL ORDER BY id"
+        )
+        p_rows = cursor.fetchall()
+
+    # Build combined list of (doc_id, text, source_table, raw_db_id) to index
+    to_index = []
+    for qid, content in q_rows:
+        doc_id = f"q_{qid}"
+        if doc_id not in indexed_ids:
+            to_index.append((doc_id, content, "questions", qid))
+    for pid, text in p_rows:
+        doc_id = f"p_{pid}"
+        if doc_id not in indexed_ids:
+            to_index.append((doc_id, text, "passages", pid))
 
     print(
-        f"Total active questions: {len(rows)} "
+        f"Total active questions: {len(q_rows)} "
+        f"| Total passages: {len(p_rows)} "
         f"| Already indexed: {len(indexed_ids)} "
         f"| To index now: {len(to_index)}"
     )
@@ -205,12 +228,14 @@ def build_index(
 
     for batch_num, batch_start in enumerate(range(0, len(to_index), batch_size), 1):
         batch = to_index[batch_start : batch_start + batch_size]
-        batch_ids = [row[0] for row in batch]
+        batch_doc_ids = [row[0] for row in batch]
         batch_texts = [row[1] for row in batch]
+        batch_sources = [row[2] for row in batch]
+        batch_raw_ids = [row[3] for row in batch]
 
         print(
             f"Batch {batch_num}/{total_batches} "
-            f"(question ids {batch_ids[0]}–{batch_ids[-1]}) …"
+            f"(doc_ids {batch_doc_ids[0]}–{batch_doc_ids[-1]}) …"
         )
 
         embeddings = get_embeddings(batch_texts, api_key=api_key, api_url=api_url)
@@ -222,15 +247,24 @@ def build_index(
         start_vid = index.ntotal
         index.add(vectors)
 
-        # Update in-memory id_map
-        id_map.extend(batch_ids)
+        # Update in-memory id_map with source metadata
+        new_entries = [
+            {"doc_id": doc_id, "source_table": src}
+            for doc_id, src in zip(batch_doc_ids, batch_sources)
+        ]
+        id_map.extend(new_entries)
 
-        # Back-fill vector_id in the database
-        updates = [(str(start_vid + i), qid) for i, qid in enumerate(batch_ids)]
-        cursor.executemany(
-            "UPDATE questions SET vector_id = ? WHERE id = ?", updates
-        )
-        conn.commit()
+        # Back-fill vector_id in the questions table only
+        q_updates = [
+            (str(start_vid + i), raw_id)
+            for i, (src, raw_id) in enumerate(zip(batch_sources, batch_raw_ids))
+            if src == "questions"
+        ]
+        if q_updates:
+            cursor.executemany(
+                "UPDATE questions SET vector_id = ? WHERE id = ?", q_updates
+            )
+            conn.commit()
 
         # Checkpoint: save after every batch so progress is not lost on error
         save_index(index, id_map)
