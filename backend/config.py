@@ -40,6 +40,22 @@ class Settings(BaseSettings):
     llm_timeout: int = Field(default=60, description="LLM API 超时秒数")
 
     # -----------------------------------------------------------------------
+    # SiliconFlow 速率限制 & 重试
+    # -----------------------------------------------------------------------
+    sf_request_delay_seconds: float = Field(
+        default=1.0,
+        description="每次 SiliconFlow API 请求前的基础延迟（秒），用于速率限制",
+    )
+    sf_max_retries: int = Field(
+        default=3,
+        description="SiliconFlow API 最大重试次数（遇到 429 或超时时触发）",
+    )
+    sf_api_timeout: int = Field(
+        default=30,
+        description="SiliconFlow API 请求超时时间（秒）",
+    )
+
+    # -----------------------------------------------------------------------
     # Embedding
     # -----------------------------------------------------------------------
     embedding_model: str = Field(

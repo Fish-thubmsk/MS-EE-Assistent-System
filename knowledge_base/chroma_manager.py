@@ -20,6 +20,8 @@ import httpx
 import chromadb
 from chromadb.config import Settings
 
+from utils.sf_retry import call_with_retry, get_sf_timeout
+
 
 # ---------------------------------------------------------------------------
 # 常量 / 默认配置
@@ -85,8 +87,10 @@ def get_embedding(text: str, api_key: Optional[str] = None) -> list[float]:
         "Content-Type": "application/json",
     }
     payload = {"model": EMBEDDING_MODEL, "input": text, "encoding_format": "float"}
-    response = httpx.post(SILICONFLOW_API_URL, json=payload, headers=headers, timeout=30)
-    response.raise_for_status()
+    timeout = get_sf_timeout()
+    response = call_with_retry(
+        lambda: httpx.post(SILICONFLOW_API_URL, json=payload, headers=headers, timeout=timeout)
+    )
     return response.json()["data"][0]["embedding"]
 
 
