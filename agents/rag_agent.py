@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-DEFAULT_LLM_MODEL = "deepseek-ai/DeepSeek-R1"
+DEFAULT_LLM_MODEL = "deepseek-ai/DeepSeek-V3"
 DEFAULT_N_FAISS = 5
 DEFAULT_N_CHROMA = 3
 

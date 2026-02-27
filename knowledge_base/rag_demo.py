@@ -213,7 +213,7 @@ def main() -> None:
         if not api_key:
             print("⚠️  未找到 SILICONFLOW_API_KEY，将使用模板回复（降级模式）")
         else:
-            print("🤖 将调用 DeepSeek-R1 (SiliconFlow) 生成答案")
+            print("🤖 将调用 DeepSeek-V3 (SiliconFlow) 生成答案")
 
     _print_separator()
     print("🔄 执行 RAG 流程…\n")
