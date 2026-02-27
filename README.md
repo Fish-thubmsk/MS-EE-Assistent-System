@@ -72,6 +72,114 @@ uvicorn main:app --reload
 
 ---
 
+---
+
+## 📝 动态知识库模块（ChromaDB 增量更新）
+
+本模块实现了基于 ChromaDB 的动态个人知识库，支持用户笔记、错题的增量向量化与检索。
+
+### 模块文件说明
+
+| 文件 | 说明 |
+|------|------|
+| `knowledge_base/chroma_manager.py` | ChromaDB 管理核心，调用 SiliconFlow BAAI/bge-m3 API 向量化 |
+| `knowledge_base/note_watcher.py` | 增量监控脚本，监听 `mock_notes/` 目录的文件变更 |
+| `backend/routers/notes.py` | FastAPI 笔记 API 路由（增删查） |
+| `mock_notes/` | mock 笔记/错题数据目录 |
+| `chroma_userdata/` | ChromaDB 持久化存储目录 |
+
+### mock 数据格式
+
+`mock_notes/` 目录下的 Markdown 文件头部使用 YAML frontmatter 声明元数据：
+
+```markdown
+---
+subject: 数学          # 学科（数学 / 政治 / 英语）
+chapter: 高等数学-极限  # 章节
+type: note             # 类型：note（笔记）或 wrong（错题）
+date: 2024-01-10       # 日期
+---
+
+# 正文内容
+
+...
+```
+
+已包含的 mock 示例：
+
+| 文件 | 学科 | 类型 |
+|------|------|------|
+| `math_calculus_note.md` | 数学 | 笔记（极限与连续） |
+| `math_derivative_wrong.md` | 数学 | 错题（导数计算） |
+| `politics_materialism_note.md` | 政治 | 笔记（唯物论） |
+| `politics_history_wrong.md` | 政治 | 错题（新民主主义革命） |
+| `english_reading_note.md` | 英语 | 笔记（长难句分析） |
+| `english_writing_wrong.md` | 英语 | 错题（写作失分点） |
+
+### 快速使用
+
+#### 1. 配置 SiliconFlow API Key
+
+```bash
+export SILICONFLOW_API_KEY=your_api_key_here
+```
+
+#### 2. 一次性扫描 mock_notes 目录并存入 ChromaDB
+
+```bash
+python -m knowledge_base.note_watcher --once
+```
+
+#### 3. 持续监控（每 5 秒扫描一次）
+
+```bash
+python -m knowledge_base.note_watcher
+```
+
+#### 4. 使用 API 接口
+
+启动后端：
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+**新增笔记**
+
+```bash
+curl -X POST http://localhost:8000/notes/ \
+  -H "Content-Type: application/json" \
+  -d '{"content": "# 微积分\n极限是微积分的基础。", "metadata": {"subject": "数学"}}'
+```
+
+**向量相似度检索**
+
+```bash
+curl "http://localhost:8000/notes/query?q=极限的定义&n=3"
+# 按学科过滤
+curl "http://localhost:8000/notes/query?q=革命&subject=政治"
+```
+
+**删除笔记**
+
+```bash
+curl -X DELETE http://localhost:8000/notes/{doc_id}
+```
+
+**查询总数**
+
+```bash
+curl http://localhost:8000/notes/count
+```
+
+#### 5. 运行测试
+
+```bash
+pytest tests/test_chroma_manager.py -v
+```
+
+---
+
 ## 🔗 相关文档
 
 - [数据库说明](datebase/README.md)
