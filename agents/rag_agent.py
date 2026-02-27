@@ -408,7 +408,10 @@ def _default_faiss_searcher(query: str, top_k: int) -> list[dict[str, Any]]:
 
         return search(query, top_k=top_k)
     except FileNotFoundError:
-        logger.debug("FAISS 索引文件不存在，跳过检索。")
+        logger.warning(
+            "FAISS 索引文件不存在，跳过检索。"
+            "请先运行 `python knowledge_base/build_faiss_index.py` 构建索引。"
+        )
         return []
     except Exception as exc:  # pylint: disable=broad-except
         logger.warning("FAISS 检索异常：%s", exc)

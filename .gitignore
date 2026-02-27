@@ -38,7 +38,10 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Vector index files (large binary artifacts, keep directory placeholder)
+# Vector index files — large binary artifacts, not committed to the repo.
+# These are generated at runtime by running:
+#   python knowledge_base/build_faiss_index.py
+# The directory placeholder (.gitkeep) is tracked so the directory exists after clone.
 knowledge_base/*.faiss
 knowledge_base/*.pkl
 knowledge_base/index.*
