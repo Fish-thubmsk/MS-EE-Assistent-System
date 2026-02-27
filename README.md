@@ -38,20 +38,68 @@ newrepo/
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 方式一：Docker 一键启动（推荐）
+
+> 需要安装 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)（v2.x）。
+
+#### 1. 配置环境变量
+
+```bash
+cp .env.example .env
+# 用编辑器打开 .env，填写 SILICONFLOW_API_KEY 等参数
+# 若无 API Key，保持默认即可（系统自动降级为 mock 模式）
+```
+
+#### 2. 构建并启动所有服务
+
+```bash
+cd docker
+docker compose up -d --build
+```
+
+启动后访问：
+- **前端页面**：http://localhost:3000
+- **后端 API 文档**：http://localhost:8000/docs
+- **健康检查**：http://localhost:8000/health
+
+> Docker 方式下前端通过 nginx 反向代理后端（`/api/`、`/diagnosis/`、`/notes/`），**无需在侧边栏修改「后端地址」**，保持默认 `http://localhost:8000` 即可。
+
+#### 3. 查看日志
+
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+#### 4. 停止服务
+
+```bash
+docker compose down
+```
+
+如需同时清除挂载卷（**将删除 ChromaDB 持久化数据**）：
+
+```bash
+docker compose down -v
+```
+
+---
+
+### 方式二：本地开发启动
+
+#### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 启动后端
+#### 2. 启动后端
 
 ```bash
-cd backend
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 ```
 
-### 3. 前端访问
+#### 3. 前端访问
 
 前端为纯静态单页面，**无需任何构建步骤**，两种启动方式：
 
@@ -80,6 +128,45 @@ python -m http.server 3000 --directory frontend
 > 2. 打开前端页面后，左侧栏「后端地址」默认填写 `http://localhost:8000`，可按需修改。
 > 3. 若 `SILICONFLOW_API_KEY` 未配置，后端会自动降级为 mock 模式，前端所有功能仍可正常演示。
 > 4. 若遇到跨域问题，使用上述方式二通过 HTTP 服务器访问，或确认后端 `CORS_ORIGINS` 已包含前端域名。
+
+---
+
+### 🐳 Docker 常见问题
+
+**Q: 构建时报错 `libgomp1: not found`？**
+
+后端 Dockerfile 已在 builder 阶段安装 `libgomp1`（faiss-cpu 依赖），如遇此错误请确保网络正常，让 `apt-get` 正常安装系统依赖。
+
+**Q: 前端容器启动后报 `502 Bad Gateway`？**
+
+前端依赖后端健康检查通过后才会启动（`depends_on: condition: service_healthy`）。请检查后端日志是否有报错：
+
+```bash
+docker compose logs backend
+```
+
+**Q: 修改了 `.env` 后如何生效？**
+
+重启后端容器即可：
+
+```bash
+docker compose restart backend
+```
+
+**Q: 如何持久化数据？**
+
+数据目录通过 volume 挂载到宿主机，以下目录会保留数据：
+- `chroma_userdata/` — ChromaDB 动态知识库
+- `knowledge_base/faiss_index/` — FAISS 向量索引
+- `datebase/` — SQLite 题库
+- `mock_notes/` — mock 笔记文件
+
+**Q: 如何仅重新构建某个服务？**
+
+```bash
+docker compose build backend   # 仅重建后端镜像
+docker compose up -d backend   # 重启后端容器
+```
 
 **前端功能一览**
 
