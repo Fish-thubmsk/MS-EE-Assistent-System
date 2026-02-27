@@ -107,7 +107,7 @@ def run_diagnosis_api(req: DiagnosisRequest) -> DiagnosisResponse:
     """
     分析用户做题历史，识别薄弱知识点，生成个性化推荐与诊断报告。
 
-    - 若 **history_records** 为空，自动使用内置 mock 数据演示。
+    - 若 **history_records** 为空，优先从数据库读取该用户的真实做题记录；DB 无数据时自动使用内置 mock 数据演示。
     - 可通过 **subject** 限定分析范围（如只分析"数学"）。
     - **weak_threshold** 控制薄弱点判定准确率阈值（默认 0.6）。
     """
@@ -135,10 +135,12 @@ def run_diagnosis_api(req: DiagnosisRequest) -> DiagnosisResponse:
     )
 
 
-@router.get("/mock", response_model=DiagnosisResponse, summary="使用 mock 数据体验诊断")
+@router.get("/mock", response_model=DiagnosisResponse, summary="使用 mock 数据体验诊断（仅供演示）")
 def mock_diagnosis() -> DiagnosisResponse:
     """
     使用内置 mock 用户数据（user_001）快速体验学习诊断流程，无需传入任何参数。
+
+    **注意**：本接口仅用于演示，使用内置 mock 数据而非真实用户做题记录。
     """
     state = run_diagnosis(user_id="user_001")
 

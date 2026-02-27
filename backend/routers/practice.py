@@ -69,6 +69,7 @@ class GradeResultOut(BaseModel):
 
 
 class PracticeRequest(BaseModel):
+    user_id: str = Field(default="guest", description="用户 ID")
     user_input: str = Field(..., description="用户答案或输入文本")
     current_question: Optional[dict[str, Any]] = Field(
         None,
@@ -94,6 +95,71 @@ class PracticeResponse(BaseModel):
     followup_questions: list[str] = Field(default_factory=list, description="追问建议")
     messages: list[dict[str, str]] = Field(..., description="更新后的消息列表")
     quiz_history: list[dict[str, Any]] = Field(..., description="更新后的刷题历史")
+
+
+# ---------------------------------------------------------------------------
+# 内部工具：quiz_records 持久化
+# ---------------------------------------------------------------------------
+
+_quiz_records_table_ensured: bool = False
+
+
+def _ensure_quiz_records_table() -> None:
+    """确保 quiz_records 表存在于题库数据库中（每个进程生命周期内只建一次）。"""
+    global _quiz_records_table_ensured
+    if _quiz_records_table_ensured or not _DB_PATH.exists():
+        return
+    try:
+        with sqlite3.connect(str(_DB_PATH)) as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS quiz_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    question_id INTEGER,
+                    subject TEXT,
+                    knowledge_point TEXT,
+                    is_correct INTEGER,
+                    answered_at TEXT
+                )
+                """
+            )
+            conn.commit()
+        _quiz_records_table_ensured = True
+    except sqlite3.Error as exc:
+        logger.warning("Failed to ensure quiz_records table: %s", exc)
+
+
+def _save_quiz_record(
+    user_id: str,
+    question: dict[str, Any],
+    is_correct: Optional[bool],
+) -> None:
+    """将一条做题结果保存到 quiz_records 表。"""
+    if not _DB_PATH.exists():
+        return
+    try:
+        _ensure_quiz_records_table()
+        kps: list[str] = question.get("knowledge_points") or []
+        knowledge_point = kps[0] if kps else question.get("knowledge_point", "")
+        # is_correct 为 None 时以 NULL 存储，区别于明确答错（0）
+        is_correct_val: Optional[int] = None if is_correct is None else (1 if is_correct else 0)
+        with sqlite3.connect(str(_DB_PATH)) as conn:
+            conn.execute(
+                "INSERT INTO quiz_records"
+                "(user_id, question_id, subject, knowledge_point, is_correct, answered_at)"
+                " VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                (
+                    user_id,
+                    question.get("id"),
+                    question.get("subject", ""),
+                    knowledge_point,
+                    is_correct_val,
+                ),
+            )
+            conn.commit()
+    except sqlite3.Error as exc:
+        logger.warning("Failed to save quiz record: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +300,7 @@ async def practice(req: PracticeRequest, settings: SettingsDep) -> PracticeRespo
         raise HTTPException(status_code=500, detail=f"刷题处理失败：{exc}") from exc
 
     grade = state.get("grade_result") or {}
+    _save_quiz_record(req.user_id, question, grade.get("is_correct"))
     return PracticeResponse(
         grade_result=GradeResultOut(
             is_correct=grade.get("is_correct"),

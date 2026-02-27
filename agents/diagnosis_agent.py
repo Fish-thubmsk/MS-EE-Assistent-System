@@ -6,7 +6,7 @@
 工作流：
     START
       │
-    load_history        ← 读取 mock 用户做题历史（JSON / SQLite statistics 字段）
+    load_history        ← 优先从 quiz_records 表读取真实做题历史，无数据时 fallback 到 mock JSON
       │
     analyze_weak_points ← Analyzer 子 Agent：统计各知识点准确率，评定薄弱点
       │
@@ -17,7 +17,8 @@
     END
 
 支持：
-  * 完全基于 mock 数据运行（不依赖外部 API Key）
+  * 真实用户做题记录（通过 /api/practice 提交后持久化到 quiz_records 表）
+  * 完全基于 mock 数据运行（DB 无记录时自动 fallback）
   * 薄弱点阈值、推荐数量可配置
   * 可替换为真实用户数据对接（run_diagnosis 接受自定义 history_records）
 """
@@ -131,6 +132,56 @@ class DiagnosisState(TypedDict):
 # ---------------------------------------------------------------------------
 # 工具函数
 # ---------------------------------------------------------------------------
+
+
+def _load_db_history(
+    user_id: str,
+    subject: Optional[str] = None,
+    db_path: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """
+    从 quiz_records 表读取用户真实做题历史。
+
+    Args:
+        user_id: 用户 ID。
+        subject: 可选学科过滤。
+        db_path: SQLite 数据库路径（默认使用 _DB_PATH）。
+
+    Returns:
+        做题记录列表，表不存在或无记录时返回空列表。
+    """
+    path = Path(db_path) if db_path else _DB_PATH
+    if not path.exists():
+        return []
+    try:
+        # `conditions` contains only hardcoded literal SQL fragments; user values are
+        # always bound via parameterised placeholders (`params`) to prevent SQL injection.
+        conditions = ["user_id = ?"]
+        params: list[Any] = [user_id]
+        if subject:
+            conditions.append("subject = ?")
+            params.append(subject)
+        where = " AND ".join(conditions)
+        with sqlite3.connect(str(path)) as conn:
+            cursor = conn.execute(
+                f"SELECT question_id, subject, knowledge_point, is_correct, answered_at"
+                f" FROM quiz_records WHERE {where}",
+                params,
+            )
+            rows = cursor.fetchall()
+        return [
+            {
+                "question_id": r[0],
+                "subject": r[1],
+                "knowledge_point": r[2],
+                "is_correct": bool(r[3]),
+                "answered_at": r[4],
+            }
+            for r in rows
+        ]
+    except sqlite3.Error as exc:
+        logger.warning("Failed to load quiz records from DB: %s", exc)
+        return []
 
 
 def _load_mock_history(
@@ -424,7 +475,7 @@ class DiagnosisAgent:
     # --- 节点 1：加载历史 ---
 
     def load_history(self, state: DiagnosisState) -> DiagnosisState:
-        """读取 mock 用户做题历史记录，并按学科过滤。"""
+        """读取用户做题历史记录（优先从 DB 读取，无数据时 fallback 到 mock），并按学科过滤。"""
         subject = state.get("subject")
         if state.get("history_records"):
             # 已注入 history_records，仅做学科过滤
@@ -432,11 +483,21 @@ class DiagnosisAgent:
             if subject:
                 records = [r for r in records if r.get("subject") == subject]
             return {**state, "history_records": records}
-        records = _load_mock_history(
+
+        # 优先从 quiz_records 表读取真实记录
+        records = _load_db_history(
             user_id=state["user_id"],
             subject=subject,
-            history_path=self.history_path,
+            db_path=self.db_path,
         )
+
+        # DB 无数据时 fallback 到 mock
+        if not records:
+            records = _load_mock_history(
+                user_id=state["user_id"],
+                subject=subject,
+                history_path=self.history_path,
+            )
         return {**state, "history_records": records}
 
     # --- 节点 2：Analyzer 子 Agent —— 分析薄弱点 ---
