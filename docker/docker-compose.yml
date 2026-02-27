@@ -1,0 +1,32 @@
+# 考研智能辅导系统 — Docker Compose 部署文件
+# 启动方式：docker compose up -d
+
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: kaoyan-backend:latest
+    container_name: kaoyan-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    volumes:
+      # ChromaDB 持久化数据
+      - ../chroma_userdata:/app/chroma_userdata
+      # FAISS 索引
+      - ../knowledge_base/faiss_index:/app/knowledge_base/faiss_index
+      # SQLite 题库
+      - ../datebase:/app/datebase
+      # mock 笔记数据
+      - ../mock_notes:/app/mock_notes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
