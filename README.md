@@ -53,7 +53,48 @@ uvicorn main:app --reload
 
 ### 3. 前端访问
 
-打开 `frontend/index.html`，或按前端框架说明启动开发服务器。
+前端为纯静态单页面，**无需任何构建步骤**，两种启动方式：
+
+**方式一：直接用浏览器打开（最简）**
+
+```bash
+# macOS
+open frontend/index.html
+# Linux
+xdg-open frontend/index.html
+# Windows
+start frontend/index.html
+```
+
+**方式二：通过本地 HTTP 服务器（推荐，避免浏览器跨域限制）**
+
+```bash
+# Python 3
+python -m http.server 3000 --directory frontend
+# 然后访问 http://localhost:3000
+```
+
+> **联调说明**
+>
+> 1. 确保后端已在 `http://localhost:8000` 启动（`uvicorn backend.main:app --reload`）。
+> 2. 打开前端页面后，左侧栏「后端地址」默认填写 `http://localhost:8000`，可按需修改。
+> 3. 若 `SILICONFLOW_API_KEY` 未配置，后端会自动降级为 mock 模式，前端所有功能仍可正常演示。
+> 4. 若遇到跨域问题，使用上述方式二通过 HTTP 服务器访问，或确认后端 `CORS_ORIGINS` 已包含前端域名。
+
+**前端功能一览**
+
+| Tab | 说明 | 对应后端接口 |
+|-----|------|------------|
+| 问答 | 输入知识点问题，RAG 检索并 LLM 生成答案，支持 SSE 流式输出，显示引用来源与推荐题目 | `POST /api/answer` / `POST /api/answer/stream` |
+| 刷题 | 随机获取 mock 题，提交答案后获取批改意见和逐字流式解析 | `GET /api/practice/question` / `POST /api/practice/stream` |
+| 诊断 | 根据 mock 用户做题历史分析薄弱知识点，生成诊断报告和推荐练习题/笔记 | `POST /diagnosis/run` |
+
+**侧边栏选项**
+
+- **后端地址**：可动态修改，无需刷新页面
+- **当前用户**：模拟三个 mock 用户（user_001/002/003），影响诊断模式的分析结果
+- **知识库**：独立开关控制是否启用 FAISS 静态知识库 / Chroma 动态笔记库
+- **流式输出**：开关切换 SSE 流式 / 同步两种响应模式
 
 ---
 

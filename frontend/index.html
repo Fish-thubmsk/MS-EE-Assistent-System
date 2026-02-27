@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>考研智能辅导系统</title>
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <style>
+    body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+    #app { flex: 1; display: flex; overflow: hidden; }
+    /* Sidebar */
+    #sidebar {
+      width: 240px; min-width: 200px;
+      background: #f8f9fa; border-right: 1px solid #dee2e6;
+      display: flex; flex-direction: column; overflow-y: auto; padding: 12px;
+    }
+    /* Main area */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    /* Chat area */
+    #chat-box {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .msg-user { align-self: flex-end; }
+    .msg-assistant { align-self: flex-start; }
+    .msg-bubble {
+      max-width: 75%; padding: 10px 14px; border-radius: 12px;
+      white-space: pre-wrap; word-break: break-word; font-size: 0.9rem;
+    }
+    .msg-user .msg-bubble { background: #0d6efd; color: #fff; border-bottom-right-radius: 4px; }
+    .msg-assistant .msg-bubble { background: #e9ecef; color: #212529; border-bottom-left-radius: 4px; }
+    /* Input row */
+    #input-area { border-top: 1px solid #dee2e6; padding: 10px 16px; background: #fff; }
+    /* Question card */
+    #question-card { margin: 12px 16px; }
+    /* Result panels */
+    #result-area { border-top: 1px solid #dee2e6; padding: 10px 16px; background: #fafafa; max-height: 240px; overflow-y: auto; }
+    /* Diagnosis panel */
+    #diagnosis-panel { flex: 1; overflow-y: auto; padding: 16px; }
+    .hidden { display: none !important; }
+    /* Spinner in bubble */
+    .typing-dot { display: inline-block; width: 8px; height: 8px; background: #666; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
+    .badge-correct { background: #198754; }
+    .badge-wrong  { background: #dc3545; }
+    pre { background: #f1f3f5; padding: 8px; border-radius: 6px; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+
+<!-- Top navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3 py-2">
+  <span class="navbar-brand fw-bold me-3"><i class="bi bi-mortarboard-fill me-1"></i>考研智能辅导</span>
+  <div class="d-flex gap-2" id="mode-tabs">
+    <button class="btn btn-sm btn-light active" data-mode="qa"><i class="bi bi-chat-dots me-1"></i>问答</button>
+    <button class="btn btn-sm btn-outline-light" data-mode="practice"><i class="bi bi-pencil-square me-1"></i>刷题</button>
+    <button class="btn btn-sm btn-outline-light" data-mode="diagnosis"><i class="bi bi-bar-chart-line me-1"></i>诊断</button>
+  </div>
+  <div class="ms-auto text-white-50 small" id="api-status">后端：<span id="api-url-display">http://localhost:8000</span></div>
+</nav>
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+
+    <!-- Backend URL config -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold small mb-1">后端地址</label>
+      <input id="backend-url" type="text" class="form-control form-control-sm" value="http://localhost:8000" />
+    </div>
+
+    <!-- User selector -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold small mb-1"><i class="bi bi-person-circle me-1"></i>当前用户</label>
+      <select id="user-select" class="form-select form-select-sm">
+        <option value="user_001">user_001（数学偏弱）</option>
+        <option value="user_002">user_002（政治偏弱）</option>
+        <option value="user_003">user_003（英语偏弱）</option>
+      </select>
+    </div>
+
+    <!-- Knowledge base toggle -->
+    <div class="mb-3">
+      <label class="form-label fw-semibold small mb-1"><i class="bi bi-database me-1"></i>知识库</label>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="use-faiss" checked />
+        <label class="form-check-label small" for="use-faiss">结构化知识库（FAISS）</label>
+      </div>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="use-chroma" />
+        <label class="form-check-label small" for="use-chroma">动态笔记库（Chroma）</label>
+      </div>
+    </div>
+
+    <!-- Stream toggle -->
+    <div class="mb-3">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="use-stream" checked />
+        <label class="form-check-label small" for="use-stream">流式输出（SSE）</label>
+      </div>
+    </div>
+
+    <hr class="my-2" />
+
+    <!-- Chat history list -->
+    <div class="fw-semibold small mb-1"><i class="bi bi-clock-history me-1"></i>历史问题</div>
+    <ul id="history-list" class="list-group list-group-flush small" style="overflow-y:auto;flex:1;"></ul>
+
+    <hr class="my-2" />
+    <button id="clear-btn" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-trash me-1"></i>清除对话</button>
+  </aside>
+
+  <!-- Main content -->
+  <div id="main">
+
+    <!-- ======== Q&A MODE ======== -->
+    <div id="mode-qa" class="d-flex flex-column h-100">
+      <div id="chat-box"></div>
+
+      <!-- Citations / Recommendations result area -->
+      <div id="result-area" class="hidden">
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="fw-semibold small mb-1 text-secondary"><i class="bi bi-card-list me-1"></i>引用来源</div>
+            <div id="citations-list"></div>
+          </div>
+          <div class="col-md-6">
+            <div class="fw-semibold small mb-1 text-secondary"><i class="bi bi-lightbulb me-1"></i>相关推荐</div>
+            <div id="recommendations-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="input-area" class="d-flex gap-2 align-items-end">
+        <textarea id="qa-input" class="form-control form-control-sm" rows="2"
+          placeholder="输入问题，按 Enter 发送（Shift+Enter 换行）…" style="resize:none;"></textarea>
+        <button id="qa-send" class="btn btn-primary btn-sm px-3">
+          <i class="bi bi-send-fill"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ======== PRACTICE MODE ======== -->
+    <div id="mode-practice" class="d-flex flex-column h-100 hidden">
+      <!-- Question display -->
+      <div id="question-card">
+        <div class="card border-primary">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="bi bi-question-circle me-1"></i>当前题目</span>
+            <button id="next-question-btn" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-arrow-right-circle me-1"></i>换题
+            </button>
+          </div>
+          <div class="card-body" id="question-body">
+            <div class="text-muted small">点击「换题」加载一道题目…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practice chat / grading results -->
+      <div id="practice-chat-box" class="flex-grow-1 overflow-y-auto px-3 pb-2" style="overflow-y:auto;"></div>
+
+      <!-- Grade result area -->
+      <div id="grade-area" class="hidden border-top px-3 py-2 bg-light">
+        <div class="row g-2 align-items-start">
+          <div class="col-auto">
+            <span id="grade-badge" class="badge fs-6"></span>
+          </div>
+          <div class="col">
+            <div class="small fw-semibold mb-1">批改意见</div>
+            <div id="grade-feedback" class="small text-muted"></div>
+          </div>
+        </div>
+        <div class="mt-2 hidden" id="followup-area">
+          <div class="small fw-semibold mb-1">追问建议</div>
+          <ul id="followup-list" class="mb-0 small"></ul>
+        </div>
+      </div>
+
+      <div id="input-area" class="d-flex gap-2 align-items-end" style="border-top:1px solid #dee2e6;padding:10px 16px;background:#fff;">
+        <textarea id="practice-input" class="form-control form-control-sm" rows="2"
+          placeholder="输入你的答案… Enter 提交，Shift+Enter 换行" style="resize:none;"></textarea>
+        <button id="practice-send" class="btn btn-success btn-sm px-3">
+          <i class="bi bi-check2-circle"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ======== DIAGNOSIS MODE ======== -->
+    <div id="mode-diagnosis" class="d-flex flex-column h-100 hidden">
+      <div id="diagnosis-panel">
+        <div class="d-flex gap-2 mb-3">
+          <button id="run-diagnosis-btn" class="btn btn-warning">
+            <i class="bi bi-play-circle me-1"></i>运行学习诊断（mock 数据）
+          </button>
+          <select id="diag-subject" class="form-select w-auto">
+            <option value="">全部学科</option>
+            <option value="数学">数学</option>
+            <option value="政治">政治</option>
+            <option value="英语">英语</option>
+          </select>
+          <div id="diag-loading" class="spinner-border spinner-border-sm text-warning align-self-center hidden" role="status"></div>
+        </div>
+
+        <div id="diag-result" class="hidden">
+          <!-- Report -->
+          <div class="card mb-3">
+            <div class="card-header fw-semibold"><i class="bi bi-file-text me-1"></i>诊断报告</div>
+            <div class="card-body small" id="diag-report" style="white-space:pre-wrap;"></div>
+          </div>
+
+          <!-- Weak points table -->
+          <div class="card mb-3">
+            <div class="card-header fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>薄弱知识点</div>
+            <div class="card-body p-0">
+              <table class="table table-sm table-hover mb-0" id="weak-points-table">
+                <thead class="table-light">
+                  <tr><th>知识点</th><th>学科</th><th>准确率</th><th>尝试次数</th><th>优先级</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recommended questions -->
+          <div class="card mb-3">
+            <div class="card-header fw-semibold"><i class="bi bi-collection me-1"></i>推荐练习题</div>
+            <div class="card-body p-0">
+              <table class="table table-sm table-hover mb-0" id="rec-questions-table">
+                <thead class="table-light">
+                  <tr><th>ID</th><th>学科</th><th>知识点</th><th>难度</th><th>题目（截取）</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recommended notes -->
+          <div class="card mb-3">
+            <div class="card-header fw-semibold"><i class="bi bi-journals me-1"></i>推荐参考笔记</div>
+            <div class="card-body p-0">
+              <table class="table table-sm table-hover mb-0" id="rec-notes-table">
+                <thead class="table-light">
+                  <tr><th>ID</th><th>学科</th><th>类型</th><th>摘要</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+</div><!-- /#app -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ============================================================
+// State
+// ============================================================
+const state = {
+  mode: 'qa',           // 'qa' | 'practice' | 'diagnosis'
+  messages: [],         // Q&A conversation history
+  practiceMessages: [], // Practice conversation history
+  currentQuestion: null,
+  quizHistory: [],
+  userId: 'user_001',
+};
+
+// ============================================================
+// Helpers
+// ============================================================
+const backendUrl = () => document.getElementById('backend-url').value.replace(/\/$/, '');
+const useFaiss   = () => document.getElementById('use-faiss').checked;
+const useChroma  = () => document.getElementById('use-chroma').checked;
+const useStream  = () => document.getElementById('use-stream').checked;
+
+function apiUrl(path) { return backendUrl() + path; }
+
+// Update display of backend URL in navbar
+document.getElementById('backend-url').addEventListener('input', e => {
+  document.getElementById('api-url-display').textContent = e.target.value;
+});
+
+// ============================================================
+// Mode switching
+// ============================================================
+document.getElementById('mode-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-mode]');
+  if (!btn) return;
+  const mode = btn.dataset.mode;
+  switchMode(mode);
+});
+
+function switchMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('#mode-tabs [data-mode]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+    b.classList.toggle('btn-light', b.dataset.mode === mode);
+    b.classList.toggle('btn-outline-light', b.dataset.mode !== mode);
+  });
+  document.getElementById('mode-qa').classList.toggle('hidden', mode !== 'qa');
+  document.getElementById('mode-practice').classList.toggle('hidden', mode !== 'practice');
+  document.getElementById('mode-diagnosis').classList.toggle('hidden', mode !== 'diagnosis');
+}
+
+// ============================================================
+// Chat rendering helpers
+// ============================================================
+function appendMessage(box, role, content) {
+  const wrap = document.createElement('div');
+  wrap.className = `msg-${role}`;
+  wrap.innerHTML = `<div class="msg-bubble">${escHtml(content)}</div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap.querySelector('.msg-bubble');
+}
+
+function appendTypingIndicator(box) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-assistant';
+  wrap.id = 'typing-indicator';
+  wrap.innerHTML = `<div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addToHistory(text) {
+  const li = document.createElement('li');
+  li.className = 'list-group-item list-group-item-action py-1 px-2 small text-truncate';
+  li.title = text;
+  li.textContent = text.slice(0, 40);
+  li.style.cursor = 'pointer';
+  li.addEventListener('click', () => {
+    document.getElementById('qa-input').value = text;
+    document.getElementById('qa-input').focus();
+  });
+  document.getElementById('history-list').prepend(li);
+}
+
+// ============================================================
+// Q&A MODE
+// ============================================================
+const qaInput  = document.getElementById('qa-input');
+const qaSend   = document.getElementById('qa-send');
+const chatBox  = document.getElementById('chat-box');
+
+qaInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQA(); }
+});
+qaSend.addEventListener('click', sendQA);
+
+async function sendQA() {
+  const text = qaInput.value.trim();
+  if (!text) return;
+  qaInput.value = '';
+  appendMessage(chatBox, 'user', text);
+  addToHistory(text);
+  state.messages.push({ role: 'user', content: text });
+
+  if (useStream()) {
+    await sendQAStream(text);
+  } else {
+    await sendQASync(text);
+  }
+}
+
+async function sendQASync(text) {
+  const indicator = appendTypingIndicator(chatBox);
+  try {
+    const resp = await fetch(apiUrl('/api/answer'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: text,
+        messages: state.messages.slice(-10),
+        use_faiss: useFaiss(),
+        use_chroma: useChroma(),
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    removeTypingIndicator();
+    const bubble = appendMessage(chatBox, 'assistant', data.answer);
+    state.messages.push({ role: 'assistant', content: data.answer });
+    renderResults(data.citations, data.recommendations);
+  } catch (err) {
+    removeTypingIndicator();
+    appendMessage(chatBox, 'assistant', `❌ 请求失败：${err.message}`);
+  }
+}
+
+async function sendQAStream(text) {
+  const indicator = appendTypingIndicator(chatBox);
+  let fullText = '';
+  let bubble = null;
+
+  try {
+    const resp = await fetch(apiUrl('/api/answer/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: text,
+        messages: state.messages.slice(-10),
+        use_faiss: useFaiss(),
+        use_chroma: useChroma(),
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    removeTypingIndicator();
+    // Create empty assistant bubble to stream into
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-assistant';
+    wrap.innerHTML = '<div class="msg-bubble"></div>';
+    chatBox.appendChild(wrap);
+    bubble = wrap.querySelector('.msg-bubble');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete line
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.token) {
+              fullText += payload.token;
+              bubble.textContent = fullText;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          } catch {}
+        }
+      }
+    }
+    state.messages.push({ role: 'assistant', content: fullText });
+  } catch (err) {
+    removeTypingIndicator();
+    appendMessage(chatBox, 'assistant', `❌ 流式请求失败：${err.message}`);
+  }
+}
+
+function renderResults(citations, recommendations) {
+  const area = document.getElementById('result-area');
+  const citList = document.getElementById('citations-list');
+  const recList  = document.getElementById('recommendations-list');
+  citList.innerHTML = '';
+  recList.innerHTML = '';
+
+  if (citations && citations.length) {
+    citations.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'border rounded p-1 mb-1 small';
+      div.innerHTML = `<span class="badge bg-secondary me-1">[${c.index}]</span><strong>${escHtml(c.source)}</strong><br><span class="text-muted">${escHtml(c.content_snippet)}</span>`;
+      citList.appendChild(div);
+    });
+  } else {
+    citList.innerHTML = '<div class="text-muted small">无引用来源</div>';
+  }
+
+  if (recommendations && recommendations.length) {
+    recommendations.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'border rounded p-1 mb-1 small';
+      div.innerHTML = `<span class="badge bg-info me-1">${escHtml(r.subject)}</span>${escHtml(r.content_snippet.slice(0,80))}…`;
+      recList.appendChild(div);
+    });
+  } else {
+    recList.innerHTML = '<div class="text-muted small">无推荐内容</div>';
+  }
+
+  area.classList.remove('hidden');
+}
+
+// ============================================================
+// PRACTICE MODE
+// ============================================================
+const practiceInput = document.getElementById('practice-input');
+const practiceSend  = document.getElementById('practice-send');
+const practiceChat  = document.getElementById('practice-chat-box');
+
+document.getElementById('next-question-btn').addEventListener('click', loadQuestion);
+practiceInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAnswer(); }
+});
+practiceSend.addEventListener('click', submitAnswer);
+
+async function loadQuestion() {
+  try {
+    const resp = await fetch(apiUrl('/api/practice/question'));
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const q = await resp.json();
+    state.currentQuestion = q;
+    renderQuestion(q);
+    // Clear practice chat
+    practiceChat.innerHTML = '';
+    document.getElementById('grade-area').classList.add('hidden');
+  } catch (err) {
+    document.getElementById('question-body').innerHTML =
+      `<span class="text-danger small">❌ 获取题目失败：${err.message}</span>`;
+  }
+}
+
+function renderQuestion(q) {
+  const body = document.getElementById('question-body');
+  const kp = (q.knowledge_points || []).map(k => `<span class="badge bg-light text-dark border me-1">${escHtml(k)}</span>`).join('');
+  body.innerHTML = `
+    <div class="d-flex gap-2 mb-2 flex-wrap">
+      <span class="badge bg-primary">${escHtml(q.subject)}</span>
+      ${q.year ? `<span class="badge bg-secondary">${q.year}年</span>` : ''}
+      ${q.question_type ? `<span class="badge bg-info text-dark">${escHtml(q.question_type)}</span>` : ''}
+      ${kp}
+    </div>
+    <div class="small fw-medium" style="white-space:pre-wrap;">${escHtml(q.content)}</div>`;
+}
+
+async function submitAnswer() {
+  const text = practiceInput.value.trim();
+  if (!text) return;
+  practiceInput.value = '';
+  appendMessage(practiceChat, 'user', text);
+
+  if (useStream()) {
+    await submitAnswerStream(text);
+  } else {
+    await submitAnswerSync(text);
+  }
+}
+
+async function submitAnswerSync(text) {
+  const indicator = appendTypingIndicator(practiceChat);
+  try {
+    const resp = await fetch(apiUrl('/api/practice'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: text,
+        current_question: state.currentQuestion,
+        user_answer: text,
+        messages: state.practiceMessages,
+        quiz_history: state.quizHistory,
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    removeTypingIndicator();
+    appendMessage(practiceChat, 'assistant', data.explanation || '（无解析）');
+    state.practiceMessages = data.messages;
+    state.quizHistory = data.quiz_history;
+    renderGradeResult(data.grade_result, data.followup_questions);
+  } catch (err) {
+    removeTypingIndicator();
+    appendMessage(practiceChat, 'assistant', `❌ 提交失败：${err.message}`);
+  }
+}
+
+async function submitAnswerStream(text) {
+  const indicator = appendTypingIndicator(practiceChat);
+  let fullText = '';
+
+  try {
+    const resp = await fetch(apiUrl('/api/practice/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_input: text,
+        current_question: state.currentQuestion,
+        user_answer: text,
+        messages: state.practiceMessages,
+        quiz_history: state.quizHistory,
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    removeTypingIndicator();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-assistant';
+    wrap.innerHTML = '<div class="msg-bubble"></div>';
+    practiceChat.appendChild(wrap);
+    const bubble = wrap.querySelector('.msg-bubble');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let gradeResult = null;
+    let followups = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let eventType = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (eventType === 'meta') {
+              gradeResult = payload.grade_result;
+              followups   = payload.followup_questions || [];
+            } else if (eventType === 'token' && payload.token) {
+              fullText += payload.token;
+              bubble.textContent = fullText;
+              practiceChat.scrollTop = practiceChat.scrollHeight;
+            }
+          } catch {}
+          eventType = '';
+        }
+      }
+    }
+
+    if (gradeResult) renderGradeResult(gradeResult, followups);
+  } catch (err) {
+    removeTypingIndicator();
+    appendMessage(practiceChat, 'assistant', `❌ 流式提交失败：${err.message}`);
+  }
+}
+
+function renderGradeResult(grade, followups) {
+  const area = document.getElementById('grade-area');
+  const badge = document.getElementById('grade-badge');
+  const feedback = document.getElementById('grade-feedback');
+  const followupList = document.getElementById('followup-list');
+
+  const scoreStr = grade.score != null ? `  ${grade.score}分` : '';
+  if (grade.is_correct === true) {
+    badge.className = 'badge badge-correct fs-6';
+    badge.textContent = `✓ 正确${scoreStr}`;
+  } else if (grade.is_correct === false) {
+    badge.className = 'badge badge-wrong fs-6';
+    badge.textContent = `✗ 错误${scoreStr}`;
+  } else {
+    badge.className = 'badge bg-warning text-dark fs-6';
+    badge.textContent = `待评${scoreStr}`;
+  }
+
+  feedback.textContent = grade.feedback || '';
+  followupList.innerHTML = '';
+  if (followups && followups.length) {
+    followups.forEach(q => {
+      const li = document.createElement('li');
+      li.textContent = q;
+      followupList.appendChild(li);
+    });
+    document.getElementById('followup-area').classList.remove('hidden');
+  }
+
+  area.classList.remove('hidden');
+}
+
+// ============================================================
+// DIAGNOSIS MODE
+// ============================================================
+document.getElementById('run-diagnosis-btn').addEventListener('click', runDiagnosis);
+
+async function runDiagnosis() {
+  const subject = document.getElementById('diag-subject').value;
+  const loading = document.getElementById('diag-loading');
+  const result  = document.getElementById('diag-result');
+
+  loading.classList.remove('hidden');
+  result.classList.add('hidden');
+
+  try {
+    const resp = await fetch(apiUrl('/diagnosis/run'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: document.getElementById('user-select').value,
+        subject: subject || null,
+      }),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderDiagnosis(data);
+  } catch (err) {
+    alert(`❌ 诊断失败：${err.message}`);
+  } finally {
+    loading.classList.add('hidden');
+  }
+}
+
+function renderDiagnosis(data) {
+  document.getElementById('diag-report').textContent = data.report || '';
+
+  // Weak points
+  const wpTbody = document.querySelector('#weak-points-table tbody');
+  wpTbody.innerHTML = '';
+  (data.weak_points || []).forEach(wp => {
+    const tr = document.createElement('tr');
+    const priorityClass = wp.priority === 'high' ? 'text-danger fw-bold' : wp.priority === 'medium' ? 'text-warning' : '';
+    tr.innerHTML = `
+      <td>${escHtml(wp.knowledge_point)}</td>
+      <td>${escHtml(wp.subject)}</td>
+      <td>${(wp.accuracy * 100).toFixed(0)}%</td>
+      <td>${wp.total_attempts}</td>
+      <td class="${priorityClass}">${escHtml(wp.priority)}</td>`;
+    wpTbody.appendChild(tr);
+  });
+
+  // Recommended questions
+  const rqTbody = document.querySelector('#rec-questions-table tbody');
+  rqTbody.innerHTML = '';
+  (data.recommended_questions || []).forEach(q => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${q.id}</td>
+      <td>${escHtml(q.subject)}</td>
+      <td>${escHtml(q.knowledge_point || '')}</td>
+      <td>${escHtml(q.difficulty_level || '')}</td>
+      <td class="text-truncate" style="max-width:240px;" title="${escHtml(q.content)}">${escHtml(q.content.slice(0,60))}…</td>`;
+    rqTbody.appendChild(tr);
+  });
+
+  // Recommended notes
+  const rnTbody = document.querySelector('#rec-notes-table tbody');
+  rnTbody.innerHTML = '';
+  (data.recommended_notes || []).forEach(n => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-truncate" style="max-width:100px;">${escHtml(n.doc_id)}</td>
+      <td>${escHtml(n.subject)}</td>
+      <td>${escHtml(n.note_type)}</td>
+      <td class="text-truncate" style="max-width:240px;" title="${escHtml(n.content_snippet)}">${escHtml(n.content_snippet.slice(0,80))}…</td>`;
+    rnTbody.appendChild(tr);
+  });
+
+  document.getElementById('diag-result').classList.remove('hidden');
+}
+
+// ============================================================
+// Clear conversation
+// ============================================================
+document.getElementById('clear-btn').addEventListener('click', () => {
+  state.messages = [];
+  state.practiceMessages = [];
+  state.quizHistory = [];
+  chatBox.innerHTML = '';
+  practiceChat.innerHTML = '';
+  document.getElementById('result-area').classList.add('hidden');
+  document.getElementById('grade-area').classList.add('hidden');
+  document.getElementById('history-list').innerHTML = '';
+});
+
+// ============================================================
+// User selector sync
+// ============================================================
+document.getElementById('user-select').addEventListener('change', e => {
+  state.userId = e.target.value;
+});
+
+// ============================================================
+// Initial welcome message
+// ============================================================
+appendMessage(chatBox, 'assistant',
+  '👋 欢迎使用考研智能辅导系统！\n\n' +
+  '• 问答模式：直接输入知识点问题，获取 RAG 解答\n' +
+  '• 刷题模式：切换至「刷题」tab，点击「换题」开始练习\n' +
+  '• 诊断模式：切换至「诊断」tab，运行学习诊断\n\n' +
+  '如需流式输出，请确保勾选「流式输出（SSE）」。');
+</script>
+</body>
+</html>
