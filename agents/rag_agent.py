@@ -28,6 +28,8 @@ import httpx
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
+from utils.sf_retry import call_with_retry, get_sf_timeout
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -152,7 +154,7 @@ def _call_siliconflow_llm(
     api_key: str,
     model: str = DEFAULT_LLM_MODEL,
     base_url: str = SILICONFLOW_BASE_URL,
-    timeout: int = 60,
+    timeout: Optional[int] = None,
 ) -> str:
     """
     直接调用 SiliconFlow OpenAI-compatible Chat Completions API。
@@ -162,7 +164,7 @@ def _call_siliconflow_llm(
         api_key: SiliconFlow API Key。
         model: 模型名称，默认 DeepSeek-R1。
         base_url: API 基础 URL。
-        timeout: 超时秒数。
+        timeout: 超时秒数；为 None 时读取环境变量 SF_API_TIMEOUT（默认 30）。
 
     Returns:
         LLM 生成的答案文本。
@@ -175,6 +177,7 @@ def _call_siliconflow_llm(
         raise ValueError(
             "SiliconFlow API Key 未配置，请设置环境变量 SILICONFLOW_API_KEY。"
         )
+    _timeout = timeout if timeout is not None else get_sf_timeout()
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -186,8 +189,9 @@ def _call_siliconflow_llm(
         "max_tokens": 2048,
     }
     url = f"{base_url.rstrip('/')}/chat/completions"
-    response = httpx.post(url, json=payload, headers=headers, timeout=timeout)
-    response.raise_for_status()
+    response = call_with_retry(
+        lambda: httpx.post(url, json=payload, headers=headers, timeout=_timeout)
+    )
     data = response.json()
     return data["choices"][0]["message"]["content"].strip()
 
