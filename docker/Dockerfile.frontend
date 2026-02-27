@@ -1,0 +1,19 @@
+# -----------------------------------------------------------------------
+# 考研智能辅导系统 — 前端 Dockerfile
+# 使用 nginx:alpine 托管静态单页面
+# -----------------------------------------------------------------------
+
+FROM nginx:1.27-alpine
+
+# 复制静态前端文件
+COPY frontend/ /usr/share/nginx/html/
+
+# 复制自定义 nginx 配置（支持后端反向代理）
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget -qO- http://localhost/index.html || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,7 +1,16 @@
 # 考研智能辅导系统 — Docker Compose 部署文件
-# 启动方式：docker compose up -d
+# 启动方式：docker compose up -d  （需要 Docker Compose v2.1+）
+#
+# 使用前请先复制并填写环境变量：
+#   cp .env.example .env
+#   # 编辑 .env，填入 SILICONFLOW_API_KEY 等参数
+#
+# 快速演示（mock 模式，无需真实 API Key）：
+#   docker compose up -d
 
-version: "3.9"
+networks:
+  kaoyan-net:
+    driver: bridge
 
 services:
   backend:
@@ -29,4 +38,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    networks:
+      - kaoyan-net
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    image: kaoyan-frontend:latest
+    container_name: kaoyan-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - kaoyan-net
