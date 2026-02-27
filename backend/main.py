@@ -1,6 +1,7 @@
 """FastAPI 后端入口"""
 
 from fastapi import FastAPI
+from backend.routers.chat import router as chat_router
 from backend.routers.notes import router as notes_router
 
 app = FastAPI(
@@ -10,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(notes_router)
+app.include_router(chat_router)
 
 
 @app.get("/", tags=["health"])
