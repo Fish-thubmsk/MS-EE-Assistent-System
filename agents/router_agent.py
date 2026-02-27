@@ -392,7 +392,11 @@ def _stub_node(mode: str):
     return _node
 
 
-def create_router_graph(llm: Any = None) -> Any:
+def create_router_graph(
+    llm: Any = None,
+    faiss_search_fn: Any = None,
+    chroma_manager: Any = None,
+) -> Any:
     """
     构建并编译 Router Agent 的 LangGraph 工作流。
 
@@ -408,10 +412,14 @@ def create_router_graph(llm: Any = None) -> Any:
 
     Args:
         llm: 可选的 LangChain LLM 实例，用于增强意图识别。
+        faiss_search_fn: 可选 FAISS 检索函数，传递给 Quiz Agent。
+        chroma_manager: 可选 ChromaManager 实例，传递给 Quiz Agent。
 
     Returns:
         编译后的 CompiledGraph 对象。
     """
+    from agents.quiz_agent import create_quiz_node  # noqa: PLC0415
+
     agent = RouterAgent(llm=llm)
 
     graph = StateGraph(RouterState)
@@ -419,8 +427,14 @@ def create_router_graph(llm: Any = None) -> Any:
     # 核心节点
     graph.add_node("recognize_intent", agent.recognize_intent)
 
-    # 各模式占位节点（后续替换为真实工作流）
-    for mode in (Mode.QUIZ, Mode.QA, Mode.DIAGNOSIS, Mode.UNKNOWN):
+    # Quiz 模式：使用真实的 Student-Teacher Agent
+    graph.add_node(
+        Mode.QUIZ.value,
+        create_quiz_node(llm=llm, faiss_search_fn=faiss_search_fn, chroma_manager=chroma_manager),
+    )
+
+    # 其他模式占位节点（后续替换为真实工作流）
+    for mode in (Mode.QA, Mode.DIAGNOSIS, Mode.UNKNOWN):
         graph.add_node(mode.value, _stub_node(mode.value))
 
     # 边
@@ -454,6 +468,8 @@ def run_router(
     messages: Optional[list[dict[str, str]]] = None,
     session_history: Optional[list[dict[str, Any]]] = None,
     multimodal_attachments: Optional[list[dict[str, Any]]] = None,
+    faiss_search_fn: Any = None,
+    chroma_manager: Any = None,
 ) -> RouterState:
     """
     单次调用 Router Agent，返回更新后的状态。
@@ -464,11 +480,17 @@ def run_router(
         messages: 历史消息列表。
         session_history: 历史会话模式记录。
         multimodal_attachments: 多模态附件（图片等）预留。
+        faiss_search_fn: 可选 FAISS 检索函数，传递给 Quiz Agent。
+        chroma_manager: 可选 ChromaManager 实例，传递给 Quiz Agent。
 
     Returns:
         更新后的 RouterState。
     """
-    compiled = create_router_graph(llm=llm)
+    compiled = create_router_graph(
+        llm=llm,
+        faiss_search_fn=faiss_search_fn,
+        chroma_manager=chroma_manager,
+    )
 
     initial: RouterState = {
         "messages": list(messages or [{"role": "user", "content": user_input}]),
