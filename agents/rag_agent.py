@@ -14,7 +14,7 @@ RAG QA Agent — LangGraph RAG 问答模式
   * 相似题目/知识点推荐
   * LLM 不可用时提供基于检索结果的模板回复
   * 兼容 RouterAgent 路由（mode=qa 时接入）
-  * 多 LLM 接入（通过 api_key / base_url 切换，默认 DeepSeek-R1 SiliconFlow）
+  * 多 LLM 接入（通过 api_key / base_url 切换，模型由环境变量 LLM_MODEL 配置）
 """
 
 from __future__ import annotations
@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-DEFAULT_LLM_MODEL = "deepseek-ai/DeepSeek-V3"
 DEFAULT_N_FAISS = 5
 DEFAULT_N_CHROMA = 3
 
@@ -152,7 +151,7 @@ def _build_context_text(fused_context: list[dict[str, Any]]) -> str:
 def _call_siliconflow_llm(
     prompt: str,
     api_key: str,
-    model: str = DEFAULT_LLM_MODEL,
+    model: str,
     base_url: str = SILICONFLOW_BASE_URL,
     timeout: Optional[int] = None,
 ) -> str:
@@ -162,7 +161,7 @@ def _call_siliconflow_llm(
     Args:
         prompt: 用户提示文本。
         api_key: SiliconFlow API Key。
-        model: 模型名称，默认 DeepSeek-R1。
+        model: 模型名称，必须显式传入（通过 LLM_MODEL 环境变量或调用方指定）。
         base_url: API 基础 URL。
         timeout: 超时秒数；为 None 时读取环境变量 SF_API_TIMEOUT（默认 30）。
 
@@ -176,6 +175,10 @@ def _call_siliconflow_llm(
     if not api_key:
         raise ValueError(
             "SiliconFlow API Key 未配置，请设置环境变量 SILICONFLOW_API_KEY。"
+        )
+    if not model:
+        raise ValueError(
+            "LLM 模型名称未配置，请设置环境变量 LLM_MODEL（推荐：deepseek-ai/DeepSeek-V3）。"
         )
     _timeout = timeout if timeout is not None else get_sf_timeout()
     headers = {
@@ -217,7 +220,7 @@ class RAGAgent:
         chroma_manager: ChromaManager 实例；若为 None 则跳过 Chroma 检索。
         llm: LangChain LLM 实例（优先使用）。
         api_key: SiliconFlow API Key（llm 未提供时使用）；默认读取环境变量。
-        llm_model: LLM 模型名称，默认 DeepSeek-R1。
+        llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL，默认 SiliconFlow。
     """
 
@@ -227,14 +230,14 @@ class RAGAgent:
         chroma_manager: Optional[Any] = None,
         llm: Optional[Any] = None,
         api_key: Optional[str] = None,
-        llm_model: str = DEFAULT_LLM_MODEL,
+        llm_model: Optional[str] = None,
         llm_base_url: str = SILICONFLOW_BASE_URL,
     ) -> None:
         self._faiss_searcher = faiss_searcher or _default_faiss_searcher
         self._chroma_manager = chroma_manager
         self._llm = llm
         self._api_key = api_key or os.environ.get("SILICONFLOW_API_KEY", "")
-        self._llm_model = llm_model
+        self._llm_model = llm_model or os.environ.get("LLM_MODEL", "")
         self._llm_base_url = llm_base_url
 
     # ------------------------------------------------------------------
@@ -422,7 +425,7 @@ def create_rag_graph(
     chroma_manager: Optional[Any] = None,
     llm: Optional[Any] = None,
     api_key: Optional[str] = None,
-    llm_model: str = DEFAULT_LLM_MODEL,
+    llm_model: Optional[str] = None,
     llm_base_url: str = SILICONFLOW_BASE_URL,
 ) -> Any:
     """
@@ -446,7 +449,7 @@ def create_rag_graph(
         chroma_manager: ChromaManager 实例（为 None 时跳过 Chroma）。
         llm: LangChain LLM 实例（优先使用）。
         api_key: SiliconFlow API Key；未提供时读取环境变量。
-        llm_model: LLM 模型名称，默认 DeepSeek-R1。
+        llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL。
 
     Returns:
@@ -489,7 +492,7 @@ def run_rag(
     chroma_manager: Optional[Any] = None,
     llm: Optional[Any] = None,
     api_key: Optional[str] = None,
-    llm_model: str = DEFAULT_LLM_MODEL,
+    llm_model: Optional[str] = None,
     llm_base_url: str = SILICONFLOW_BASE_URL,
     messages: Optional[list[dict[str, str]]] = None,
     params: Optional[dict[str, Any]] = None,
@@ -508,7 +511,7 @@ def run_rag(
         chroma_manager: ChromaManager 实例（启用 Chroma 检索时需提供）。
         llm: LangChain LLM 实例。
         api_key: SiliconFlow API Key。
-        llm_model: LLM 模型名称。
+        llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL。
         messages: 历史消息列表。
         params: RouterAgent 传来的参数（subject 等）。
