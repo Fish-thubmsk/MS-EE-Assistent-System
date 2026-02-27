@@ -31,9 +31,19 @@ import knowledge_base.search_demo as searcher
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_db(path: str, num_questions: int = 5) -> None:
-    """Create a minimal questions table populated with dummy rows."""
+def _make_db(path: str, num_questions: int = 5, num_passages: int = 2) -> None:
+    """Create minimal questions and passages tables populated with dummy rows."""
     conn = sqlite3.connect(path)
+    conn.execute(
+        """
+        CREATE TABLE passages (
+            id            INTEGER PRIMARY KEY,
+            year          INTEGER,
+            passage_title TEXT,
+            passage_text  TEXT NOT NULL
+        )
+        """
+    )
     conn.execute(
         """
         CREATE TABLE questions (
@@ -48,6 +58,12 @@ def _make_db(path: str, num_questions: int = 5) -> None:
         )
         """
     )
+    for i in range(1, num_passages + 1):
+        conn.execute(
+            "INSERT INTO passages(id, year, passage_title, passage_text) "
+            "VALUES (?, 2024, ?, ?)",
+            (i, f"Passage Title {i}", f"Test passage text number {i}"),
+        )
     for i in range(1, num_questions + 1):
         conn.execute(
             "INSERT INTO questions(id, subject, year, content, is_active) "
@@ -152,50 +168,54 @@ class TestBuildIndex(unittest.TestCase):
         self.assertTrue(os.path.exists(builder.INDEX_FILE))
         self.assertTrue(os.path.exists(builder.ID_MAP_FILE))
 
-        # All 6 questions should be indexed
+        # 6 questions + 2 passages should be indexed
         index = faiss.read_index(builder.INDEX_FILE)
-        self.assertEqual(index.ntotal, 6)
+        self.assertEqual(index.ntotal, 8)
 
         with open(builder.ID_MAP_FILE) as fh:
             id_map = json.load(fh)
-        self.assertEqual(len(id_map), 6)
-        self.assertEqual(sorted(id_map), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(len(id_map), 8)
 
-        # vector_id should be back-filled in DB
+        q_doc_ids = sorted(e["doc_id"] for e in id_map if e["source_table"] == "questions")
+        p_doc_ids = sorted(e["doc_id"] for e in id_map if e["source_table"] == "passages")
+        self.assertEqual(q_doc_ids, [f"q_{i}" for i in range(1, 7)])
+        self.assertEqual(p_doc_ids, ["p_1", "p_2"])
+
+        # vector_id should be back-filled in DB for questions
         conn = sqlite3.connect(self._db_path)
         rows = conn.execute("SELECT id, vector_id FROM questions ORDER BY id").fetchall()
         conn.close()
+        q_doc_id_to_vidx = {e["doc_id"]: i for i, e in enumerate(id_map)}
         for qid, vid in rows:
             self.assertIsNotNone(vid, f"vector_id not set for question id={qid}")
-            self.assertEqual(int(vid), id_map.index(qid))
+            self.assertEqual(int(vid), q_doc_id_to_vidx[f"q_{qid}"])
 
     @patch("knowledge_base.build_faiss_index.get_embeddings", side_effect=_fake_embeddings)
     def test_incremental_build_skips_existing(self, mock_embed):
-        """Second call to build_index must skip already-indexed questions."""
-        # First build: all 6 questions
-        builder.build_index(batch_size=6)
+        """Second call to build_index must skip already-indexed documents."""
+        # First build: all 6 questions + 2 passages
+        builder.build_index(batch_size=8)
         calls_first = mock_embed.call_count
 
         # Second build: nothing new → no API calls
-        builder.build_index(batch_size=6)
+        builder.build_index(batch_size=8)
         calls_second = mock_embed.call_count
 
         self.assertEqual(calls_second, calls_first, "No new API calls expected on re-run")
 
         index = faiss.read_index(builder.INDEX_FILE)
-        self.assertEqual(index.ntotal, 6)
+        self.assertEqual(index.ntotal, 8)
 
     @patch("knowledge_base.build_faiss_index.get_embeddings", side_effect=_fake_embeddings)
     def test_subject_filter(self, _mock_embed):
-        """Filtering by subject must only index matching questions."""
+        """Filtering by a non-English subject must not index passages."""
         builder.build_index(subject="数学", batch_size=3)
-        # All test questions have subject='政治', so the index file is never written
-        # and nothing gets indexed.
+        # All test questions have subject='政治', and '数学' excludes passages
         if os.path.exists(builder.INDEX_FILE):
             index = faiss.read_index(builder.INDEX_FILE)
             self.assertEqual(index.ntotal, 0)
         else:
-            # No questions matched the filter → no index created; that's correct
+            # No documents matched the filter → no index created; that's correct
             pass
 
 
@@ -240,7 +260,7 @@ class TestSearch(unittest.TestCase):
     def setUp(self):
         self._tmpdir = tempfile.mkdtemp()
         self._db_path = os.path.join(self._tmpdir, "test.db")
-        _make_db(self._db_path, num_questions=4)
+        _make_db(self._db_path, num_questions=4, num_passages=0)
 
         # Build a tiny FAISS index manually
         dim = builder.EMBEDDING_DIM
@@ -255,7 +275,15 @@ class TestSearch(unittest.TestCase):
         id_map_file = os.path.join(self._tmpdir, "id_map.json")
         faiss.write_index(index, index_file)
         with open(id_map_file, "w") as fh:
-            json.dump([1, 2, 3, 4], fh)
+            json.dump(
+                [
+                    {"doc_id": "q_1", "source_table": "questions"},
+                    {"doc_id": "q_2", "source_table": "questions"},
+                    {"doc_id": "q_3", "source_table": "questions"},
+                    {"doc_id": "q_4", "source_table": "questions"},
+                ],
+                fh,
+            )
 
         # Back-fill vector_id in test DB
         conn = sqlite3.connect(self._db_path)
@@ -296,6 +324,8 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["id"], 1)
         self.assertAlmostEqual(results[0]["score"], 1.0, places=4)
+        self.assertEqual(results[0]["source_table"], "questions")
+        self.assertEqual(results[0]["doc_id"], "q_1")
 
     def test_returns_top_k_results(self):
         with self._patch_query_embedding(self._vecs[0]):
@@ -308,13 +338,111 @@ class TestSearch(unittest.TestCase):
             results = searcher.search("dummy", top_k=1)
 
         r = results[0]
-        for field in ("id", "subject", "year", "content", "score", "vector_id"):
+        for field in (
+            "id", "subject", "year", "content", "score", "vector_id",
+            "source_table", "doc_id",
+        ):
             self.assertIn(field, r)
 
     def test_raises_when_index_missing(self):
         searcher.INDEX_FILE = "/nonexistent/path/questions.index"
         with self.assertRaises(FileNotFoundError):
             searcher.search("hello")
+
+    def test_source_table_filter_questions(self):
+        """source_table='questions' should return only question results."""
+        with self._patch_query_embedding(self._vecs[0]):
+            results = searcher.search("dummy", top_k=4, source_table="questions")
+        self.assertGreater(len(results), 0)
+        for r in results:
+            self.assertEqual(r["source_table"], "questions")
+
+    def test_source_table_filter_passages_returns_empty(self):
+        """source_table='passages' returns nothing when no passages are in the index."""
+        with self._patch_query_embedding(self._vecs[0]):
+            results = searcher.search("dummy", top_k=4, source_table="passages")
+        self.assertEqual(results, [])
+
+
+class TestSearchWithPassages(unittest.TestCase):
+    """Verify that passage entries in the index are correctly resolved."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._db_path = os.path.join(self._tmpdir, "test.db")
+        _make_db(self._db_path, num_questions=2, num_passages=2)
+
+        dim = builder.EMBEDDING_DIM
+        index = faiss.IndexFlatIP(dim)
+        rng = np.random.RandomState(7)
+        vecs = rng.randn(4, dim).astype(np.float32)
+        faiss.normalize_L2(vecs)
+        index.add(vecs)
+        self._vecs = vecs
+
+        index_file = os.path.join(self._tmpdir, "questions.index")
+        id_map_file = os.path.join(self._tmpdir, "id_map.json")
+        faiss.write_index(index, index_file)
+        # vectors 0,1 → questions; vectors 2,3 → passages
+        with open(id_map_file, "w") as fh:
+            json.dump(
+                [
+                    {"doc_id": "q_1", "source_table": "questions"},
+                    {"doc_id": "q_2", "source_table": "questions"},
+                    {"doc_id": "p_1", "source_table": "passages"},
+                    {"doc_id": "p_2", "source_table": "passages"},
+                ],
+                fh,
+            )
+
+        self._orig_db = searcher.DB_PATH
+        self._orig_index_file = searcher.INDEX_FILE
+        self._orig_id_map = searcher.ID_MAP_FILE
+        searcher.DB_PATH = self._db_path
+        searcher.INDEX_FILE = index_file
+        searcher.ID_MAP_FILE = id_map_file
+
+    def tearDown(self):
+        searcher.DB_PATH = self._orig_db
+        searcher.INDEX_FILE = self._orig_index_file
+        searcher.ID_MAP_FILE = self._orig_id_map
+
+    def _patch_query_vec(self, vec: np.ndarray):
+        v = vec.reshape(1, -1).astype(np.float32).copy()
+        faiss.normalize_L2(v)
+        return patch(
+            "knowledge_base.search_demo._get_query_embedding",
+            return_value=v,
+        )
+
+    def test_passage_result_fields(self):
+        """A passage hit must include passage-specific fields."""
+        with self._patch_query_vec(self._vecs[2]):  # vector for p_1
+            results = searcher.search("dummy", top_k=1)
+
+        self.assertEqual(len(results), 1)
+        r = results[0]
+        self.assertEqual(r["source_table"], "passages")
+        self.assertEqual(r["doc_id"], "p_1")
+        self.assertIn("passage_title", r)
+        self.assertIn("content", r)
+        self.assertNotIn("subject", r)
+
+    def test_filter_by_passages(self):
+        """source_table='passages' filter returns only passage results."""
+        with self._patch_query_vec(self._vecs[0]):
+            results = searcher.search("dummy", top_k=4, source_table="passages")
+        self.assertGreater(len(results), 0)
+        for r in results:
+            self.assertEqual(r["source_table"], "passages")
+
+    def test_filter_by_questions(self):
+        """source_table='questions' filter returns only question results."""
+        with self._patch_query_vec(self._vecs[2]):
+            results = searcher.search("dummy", top_k=4, source_table="questions")
+        self.assertGreater(len(results), 0)
+        for r in results:
+            self.assertEqual(r["source_table"], "questions")
 
 
 if __name__ == "__main__":
