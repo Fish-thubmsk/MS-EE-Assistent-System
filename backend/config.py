@@ -28,8 +28,7 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------------
     siliconflow_api_key: str = Field(default="", description="SiliconFlow API Key")
     llm_model: str = Field(
-        default="deepseek-ai/DeepSeek-V3",
-        description="LLM 模型名称，默认 DeepSeek-V3",
+        description="LLM 模型名称，必须通过环境变量 LLM_MODEL 配置（推荐：deepseek-ai/DeepSeek-V3）",
     )
     llm_base_url: str = Field(
         default="https://api.siliconflow.cn/v1",

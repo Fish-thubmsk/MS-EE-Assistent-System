@@ -217,8 +217,22 @@ class TestConfig:
         assert s.log_level == "INFO"
         assert s.cors_origins == ["*"]
 
+    def test_settings_requires_llm_model(self) -> None:
+        """未设置 LLM_MODEL 时，Settings 初始化应抛出 ValidationError。"""
+        import os
+
+        from pydantic import ValidationError
+
+        saved = os.environ.pop("LLM_MODEL", None)
+        try:
+            with pytest.raises(ValidationError):
+                Settings(siliconflow_api_key="", _env_file=None)
+        finally:
+            if saved is not None:
+                os.environ["LLM_MODEL"] = saved
+
     def test_settings_api_key_configurable(self) -> None:
-        s = Settings(siliconflow_api_key="test-key-123")
+        s = Settings(siliconflow_api_key="test-key-123", llm_model="deepseek-ai/DeepSeek-V3")
         assert s.siliconflow_api_key == "test-key-123"
 
     def test_settings_model_switchable(self) -> None:
