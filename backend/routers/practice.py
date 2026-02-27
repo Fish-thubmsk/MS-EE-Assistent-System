@@ -4,7 +4,7 @@
 提供以下接口：
     POST /api/practice          提交答案并获取批改结果与解析
     POST /api/practice/stream   SSE 流式返回解析内容
-    GET  /api/practice/question 随机获取一道 mock 题目
+    GET  /api/practice/question 从数据库随机获取题目（支持学科筛选）
 """
 
 from __future__ import annotations
@@ -12,9 +12,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import sqlite3
+from pathlib import Path
 from typing import Annotated, Any, AsyncGenerator, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -24,6 +27,20 @@ from backend.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/practice", tags=["practice"])
+
+# ---------------------------------------------------------------------------
+# 数据库路径（与 diagnosis_agent 保持一致，支持环境变量覆盖）
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(os.environ.get("REPO_ROOT", os.getcwd()))
+_DB_PATH = Path(
+    os.path.abspath(
+        os.environ.get(
+            "KNOWLEDGE_DB_PATH",
+            str(_REPO_ROOT / "datebase" / "knowledge_base.db"),
+        )
+    )
+)
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
@@ -97,14 +114,28 @@ async def _stream_explanation(explanation: str) -> AsyncGenerator[str, None]:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/question", response_model=QuestionOut, summary="随机获取 mock 题目")
-async def get_mock_question() -> QuestionOut:
+@router.get("/question", response_model=QuestionOut, summary="随机获取题目（支持学科筛选）")
+async def get_practice_question(
+    subject: Optional[str] = Query(None, description="学科筛选（数学/政治/英语），不传则全库随机"),
+    question_type: Optional[str] = Query(None, description="题型筛选，不传则不限"),
+) -> QuestionOut:
     """
-    随机返回一道内置 mock 数学题，供前端演示使用。
+    从知识库数据库随机抽取一道题目。支持按学科和题型筛选。
+    若数据库不可用或无匹配题目，降级返回内置 mock 题目。
     """
     import random
 
-    q = random.choice(MOCK_MATH_QUESTIONS)
+    row = _fetch_random_question_from_db(subject=subject, question_type=question_type)
+    if row:
+        return row
+
+    # 降级：从 mock 数据中随机选取（可按学科筛选）
+    pool = MOCK_MATH_QUESTIONS
+    if subject:
+        pool = [q for q in MOCK_MATH_QUESTIONS if q.get("subject") == subject]
+    if not pool:
+        pool = MOCK_MATH_QUESTIONS
+    q = random.choice(pool)
     return QuestionOut(
         id=q["id"],
         subject=q["subject"],
@@ -112,6 +143,64 @@ async def get_mock_question() -> QuestionOut:
         question_type=q.get("question_type"),
         content=q["content"],
         knowledge_points=q.get("knowledge_points", []),
+    )
+
+
+def _fetch_random_question_from_db(
+    subject: Optional[str] = None,
+    question_type: Optional[str] = None,
+) -> Optional[QuestionOut]:
+    """从 SQLite 数据库随机抽取一道激活的题目，失败时返回 None。"""
+    if not _DB_PATH.exists():
+        return None
+
+    conditions = ["is_active = 1"]
+    params: list[Any] = []
+    if subject:
+        conditions.append("subject = ?")
+        params.append(subject)
+    if question_type:
+        conditions.append("question_type = ?")
+        params.append(question_type)
+
+    # `conditions` contains only hardcoded literal SQL fragments; user values are
+    # always bound via parameterised placeholders (`params`) to prevent SQL injection.
+    where_clause = " AND ".join(conditions)
+    sql = (
+        "SELECT id, subject, year, question_type, content, knowledge_structure "
+        f"FROM questions WHERE {where_clause} ORDER BY RANDOM() LIMIT 1"
+    )
+
+    try:
+        with sqlite3.connect(str(_DB_PATH)) as conn:
+            cursor = conn.execute(sql, params)
+            row = cursor.fetchone()
+    except sqlite3.Error as exc:
+        logger.warning("DB query failed, falling back to mock questions: %s", exc)
+        return None
+
+    if not row:
+        return None
+
+    db_id, db_subject, db_year, db_question_type, db_content, db_ks = row
+    knowledge_points: list[str] = []
+    if db_ks:
+        try:
+            ks = json.loads(db_ks)
+            if isinstance(ks, dict):
+                if ks.get("primary"):
+                    knowledge_points.append(ks["primary"])
+                knowledge_points.extend(ks.get("secondary") or [])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return QuestionOut(
+        id=db_id,
+        subject=db_subject,
+        year=db_year,
+        question_type=db_question_type,
+        content=db_content,
+        knowledge_points=knowledge_points,
     )
 
 
