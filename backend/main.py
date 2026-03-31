@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import get_settings
+from backend.database.db_manager import init_db_manager
 from backend.routers.answer import router as answer_router
 from backend.routers.chat import router as chat_router
 from backend.routers.diagnosis import router as diagnosis_router
 from backend.routers.notes import router as notes_router
 from backend.routers.practice import router as practice_router
+from backend.routers.users import router as users_router
 
 settings = get_settings()
 
@@ -21,6 +25,20 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# 应用生命周期：启动时初始化用户数据库
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """应用启动时初始化用户数据库，关闭时无需额外清理。"""
+    init_db_manager(f"sqlite:///{settings.userdata_db_path}")
+    logger.info("userdata database ready at %s", settings.userdata_db_path)
+    yield
+
 
 app = FastAPI(
     title=settings.app_title,
@@ -32,6 +50,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # ---------------------------------------------------------------------------
@@ -53,6 +72,7 @@ app.include_router(chat_router)
 app.include_router(diagnosis_router)
 app.include_router(answer_router)
 app.include_router(practice_router)
+app.include_router(users_router)
 
 
 # ---------------------------------------------------------------------------

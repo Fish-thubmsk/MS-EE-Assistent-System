@@ -229,3 +229,183 @@ cursor.execute("""
 
 **最后更新** 2026-02-26  
 **工具** GitHub Copilot CLI
+
+---
+
+# 🗄️ 完整数据库设计方案（重构）
+
+## 架构总览
+
+系统采用 **双库分离** 策略，将只读的知识库数据与可写的用户行为数据完全分开：
+
+```
+knowledge_base.db   ← 只读（题库/知识点）
+userdata.db         ← 读写（用户行为/学习记录）
+chroma_userdata/    ← 向量数据库（ChromaDB，笔记/错题语义搜索）
+```
+
+---
+
+## 一、knowledge_base.db — 知识库（只读）
+
+> 路径：`datebase/knowledge_base.db`  
+> ORM：原始 sqlite3（只读查询，不需要 ORM）  
+> 访问模块：`agents/diagnosis_agent.py`、`backend/routers/practice.py`
+
+### 已有表
+
+| 表名 | 行数 | 用途 |
+|------|------|------|
+| `questions` | 2,052 | 题目（三科真题） |
+| `passages` | 143 | 英语阅读文章 |
+| `knowledge_point_hierarchy` | - | 知识点层级分类（subject/level/parent_id） |
+| `question_knowledge_points` | - | 题目 ↔ 知识点多对多关联 |
+
+### 涉及此库的 API 操作
+
+| API | 操作 | 说明 |
+|-----|------|------|
+| `GET /api/practice/question` | SELECT | 按学科/题型随机抽题 |
+| `POST /api/practice` | — | 题目内容由前端传入，不再查库 |
+| `POST /diagnosis/run` | SELECT | 按知识点推荐题目 |
+| `POST /api/answer` | SELECT（FAISS） | 向量相似度召回题目 |
+
+---
+
+## 二、userdata.db — 用户行为库（读写）
+
+> 路径：`userdata.db`（项目根目录，可通过 `USERDATA_DB_PATH` 环境变量覆盖）  
+> ORM：SQLAlchemy 2.x（`backend/database/models.py`）  
+> 管理模块：`backend/database/db_manager.py`
+
+### 表 1：users — 用户档案
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| user_id | TEXT UNIQUE | 业务层唯一 ID（如 "user_001"） |
+| display_name | TEXT | 展示名（可选） |
+| created_at | DATETIME | 注册时间 |
+| updated_at | DATETIME | 最后更新时间 |
+
+### 表 2：quiz_records — 做题历史
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| user_id | TEXT | 用户业务 ID |
+| question_id | INTEGER | 对应 knowledge_base.db.questions.id |
+| subject | TEXT | 学科（数学/政治/英语） |
+| knowledge_point | TEXT | 主要知识点 |
+| is_correct | BOOLEAN | 是否答对（NULL=主观题待判断） |
+| difficulty | TEXT | 题目难度 |
+| time_spent_seconds | INTEGER | 作答耗时（可选） |
+| answered_at | DATETIME | 作答时间 |
+
+### 表 3：chat_sessions — 会话历史
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| session_id | TEXT UNIQUE | 前端生成的唯一会话 ID |
+| user_id | TEXT | 所属用户 |
+| mode | TEXT | 会话模式（qa/quiz/diagnosis） |
+| subject | TEXT | 学科范围（可选） |
+| messages_json | TEXT | 完整消息列表 JSON（可选存档） |
+| created_at | DATETIME | 会话开始时间 |
+| updated_at | DATETIME | 最后活跃时间 |
+
+### 表 4：diagnosis_reports — 诊断报告
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| user_id | TEXT | 所属用户 |
+| subject | TEXT | 诊断学科范围（NULL=全科） |
+| weak_points_json | TEXT | 薄弱知识点列表（JSON） |
+| recommended_questions_json | TEXT | 推荐题目列表（JSON） |
+| recommended_notes_json | TEXT | 推荐笔记列表（JSON） |
+| report_text | TEXT | 完整诊断报告文本 |
+| weak_threshold | FLOAT | 薄弱点阈值 |
+| created_at | DATETIME | 报告生成时间 |
+
+### 涉及此库的 API 操作
+
+| API | 操作 | 说明 |
+|-----|------|------|
+| `POST /api/practice` | INSERT quiz_records | 每次答题后自动写入 |
+| `POST /diagnosis/run` | SELECT quiz_records + INSERT diagnosis_reports | 读历史 → 诊断 → 存报告 |
+| `GET /api/users/{id}` | SELECT/INSERT users | 获取或创建用户 |
+| `GET /api/users/{id}/history` | SELECT quiz_records | 查询做题历史 |
+| `GET /api/users/{id}/stats` | SELECT quiz_records | 统计答题正确率 |
+| `GET /api/users/{id}/sessions` | SELECT chat_sessions | 查询历史会话列表 |
+| `POST /api/users/{id}/sessions` | INSERT/UPDATE chat_sessions | 创建或更新会话存档 |
+| `GET /api/users/{id}/diagnosis` | SELECT diagnosis_reports | 查询历史诊断报告 |
+
+---
+
+## 三、ChromaDB — 向量知识库（笔记/错题）
+
+> 路径：`chroma_userdata/`（可通过 `CHROMA_PERSIST_DIRECTORY` 配置）  
+> 管理模块：`knowledge_base/chroma_manager.py`  
+> Embedding 模型：`BAAI/bge-m3`（SiliconFlow）
+
+### 集合：`notes`（默认）
+
+每个文档的 metadata 字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| subject | TEXT | 学科 |
+| type | TEXT | 文档类型（note=笔记 / wrong=错题） |
+| date | TEXT | 日期 |
+
+### 涉及 ChromaDB 的 API 操作
+
+| API | 操作 | 说明 |
+|-----|------|------|
+| `POST /notes/` | upsert | 添加/更新笔记向量 |
+| `POST /notes/file` | upsert | 从 Markdown 文件导入笔记 |
+| `GET /notes/query` | query | 语义相似度搜索 |
+| `DELETE /notes/{id}` | delete | 删除笔记 |
+| `POST /api/answer` | query | RAG 检索相关笔记 |
+| `POST /diagnosis/run` | query | 推荐相关笔记 |
+
+---
+
+## 四、完整操作汇总（所有需要数据库的场景）
+
+| # | 场景 | 读库 | 写库 |
+|---|------|------|------|
+| 1 | 随机抽题（刷题模式） | knowledge_base.db | — |
+| 2 | 提交答案并批改 | — | userdata.db (quiz_records) |
+| 3 | SSE 流式批改 | — | userdata.db (quiz_records) |
+| 4 | 查询用户做题历史 | userdata.db | — |
+| 5 | 查询用户做题统计 | userdata.db | — |
+| 6 | 问答 RAG 召回 | knowledge_base.db + ChromaDB | — |
+| 7 | 学习诊断 | userdata.db + knowledge_base.db + ChromaDB | userdata.db (diagnosis_reports) |
+| 8 | 查询历史诊断报告 | userdata.db | — |
+| 9 | 添加个人笔记 | — | ChromaDB |
+| 10 | 语义搜索笔记 | ChromaDB | — |
+| 11 | 创建/更新会话存档 | — | userdata.db (chat_sessions) |
+| 12 | 查询历史会话 | userdata.db | — |
+
+---
+
+## 五、新增 API 概览
+
+以下为本次重构新增的用户数据相关 API（前缀 `/api/users`）：
+
+```
+GET  /api/users/{user_id}               获取用户信息（不存在则自动创建）
+GET  /api/users/{user_id}/history       做题历史（支持按学科/数量过滤）
+GET  /api/users/{user_id}/stats         做题统计摘要（总数/正确率/学科分布）
+GET  /api/users/{user_id}/sessions      历史会话列表
+POST /api/users/{user_id}/sessions      创建或更新会话记录
+GET  /api/users/{user_id}/diagnosis     历史诊断报告列表
+```
+
+---
+
+**最后更新** 2026-03-31  
+**工具** GitHub Copilot Coding Agent
