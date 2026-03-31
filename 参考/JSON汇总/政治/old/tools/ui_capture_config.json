@@ -1,0 +1,9 @@
+{
+  "confidence": 0.84,
+  "pause_after_click": 0.4,
+  "stay_seconds": 5.0,
+  "scroll_step": -650,
+  "scroll_attempts_per_target": 8,
+  "retry_find_times": 5,
+  "retry_interval": 0.5
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考研刷题</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>考研刷题系统</h1>
+            <p>按科目、题型随机抽题（数学支持公式渲染）</p>
+        </header>
+
+        <section class="toolbar card">
+            <div class="field">
+                <label for="subjectSelect">科目</label>
+                <select id="subjectSelect"></select>
+            </div>
+            <div class="field">
+                <label for="typeSelect">题型</label>
+                <select id="typeSelect"></select>
+            </div>
+            <div class="field">
+                <label for="yearSelect">年份</label>
+                <select id="yearSelect"></select>
+            </div>
+            <div class="actions">
+                <button id="nextBtn" class="btn-primary">下一题</button>
+            </div>
+        </section>
+
+        <section id="meta" class="meta"></section>
+
+        <section id="questionCard" class="card question-card">
+            <div class="placeholder">请选择科目和题型后开始刷题。</div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

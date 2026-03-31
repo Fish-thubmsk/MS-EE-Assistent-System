@@ -1,0 +1,455 @@
+{
+  "exam_name": "1988年考研数学（一）真题",
+  "questions": [
+    {
+      "question_number": "1",
+      "question_body": "求幂级数$\\sum_{n=1}^{\\infty} \\frac{(x-3)^n}{n \\cdot 3^n}$的收敛域。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "幂级数收敛半径的阿贝尔定理与收敛域的求法",
+        "secondary_knowledge_points": [
+          "比值判别法（达朗贝尔判别法）",
+          "常数项级数敛散性判别（调和级数、交错级数莱布尼茨判别法）",
+          "端点代入分析"
+        ],
+        "question_type": "幂级数收敛域求解题",
+        "methodology_and_tricks": "题眼在于通过变量代换t=(x-3)/3，将原级数转化为标准形式∑tⁿ/n。先利用比值法求出收敛半径R=1，得到|t|<1，即|x-3|<3。再单独分析端点x=0和x=6处对应常数项级数的敛散性，从而确定收敛域。",
+        "common_pitfalls": "1. 忽略端点处的敛散性讨论，直接由收敛半径得出收敛区间。2. 在端点分析时，混淆交错级数与调和级数的敛散性结论。3. 变量代换后未能正确代回原变量x的范围。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "2",
+      "question_body": "已知$f(x)=e^{x^2}$, $f[\\varphi(x)]=1-x$, 且$\\varphi(x) \\ge 0$, 求$\\varphi(x)$, 并写出其定义域。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "反函数的求解与应用",
+        "secondary_knowledge_points": [
+          "复合函数的定义",
+          "指数函数的性质",
+          "对数函数的定义域",
+          "一元函数定义域的求解"
+        ],
+        "question_type": "函数求解与定义域确定",
+        "methodology_and_tricks": "解题的关键步骤是理解 f(φ(x)) = 1-x 意味着 φ(x) 是 f 的反函数在 1-x 处的取值。首先由 f(x) = e^(x^2) 求出其反函数，然后利用 φ(x) ≥ 0 的条件选择正确的平方根分支。",
+        "common_pitfalls": "最常见的错误是忽略 φ(x) ≥ 0 的条件，从而在求解反函数时错误地选择了负的平方根分支。另一个易错点是对数函数 ln(1-x) 的定义域要求 1-x > 0 被遗漏。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "3",
+      "question_body": "设$S$为曲面$x^2+y^2+z^2=1$的外侧,计算曲面积分$I=\\iint_S x^3 dy dz + y^3 dz dx + z^3 dx dy$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "高斯公式（散度定理）",
+        "secondary_knowledge_points": [
+          "三重积分计算",
+          "球坐标系下的积分",
+          "对称性分析"
+        ],
+        "question_type": "曲面积分计算题",
+        "methodology_and_tricks": "将封闭曲面上的第二类曲面积分转化为由该曲面所围立体区域上的三重积分。关键步骤是利用高斯公式，并利用球体的对称性简化积分的计算。通过对称性分析，可知被积函数中交叉项积分为零，最终简化为对常数函数在球体上的积分。",
+        "common_pitfalls": "忽略高斯公式的应用条件（封闭曲面外侧）；错误计算向量场的散度（应为3(x²+y²+z²)）；未能有效利用对称性简化计算，导致陷入复杂的球坐标积分运算。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "4",
+      "question_body": "设$f(t)=\\lim_{x \\to \\infty} (1+\\frac{1}{x})^{2tx}$, 则$f'(t)=$______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "重要极限公式：lim_{x→∞} (1 + 1/x)^x = e",
+        "secondary_knowledge_points": [
+          "导数的定义与计算",
+          "指数函数的导数",
+          "复合函数求导法则",
+          "函数极限的四则运算法则"
+        ],
+        "question_type": "极限计算题",
+        "methodology_and_tricks": "首先利用重要极限公式将函数f(t)化简为指数形式 f(t) = e^{2t}，再对变量t求导。关键在于识别极限表达式的结构，将其转化为已知的标准形式。",
+        "common_pitfalls": "未能正确识别重要极限的标准形式；在极限过程中混淆变量x与参数t；对f(t)直接使用极限运算法则求导而未先化简函数表达式。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "5",
+      "question_body": "设$f(x)$是周期为2的周期函数,它在区间$(-1,1]$上的表达式为$f(x)=\\begin{cases} 2, & -1 \\le x \\le 0 \\\\ x^3, & 0<x<1 \\end{cases}$, 则$f(x)$的傅里叶级数在$x=1$处收敛于______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "傅里叶级数的狄利克雷收敛定理",
+        "secondary_knowledge_points": [
+          "周期函数的性质",
+          "狄利克雷收敛定理的应用",
+          "函数在间断点处的平均值"
+        ],
+        "question_type": "傅里叶级数收敛性判断与求和",
+        "methodology_and_tricks": "利用狄利克雷收敛定理，计算函数在指定点x=1处的左右极限，并求其算术平均值作为傅里叶级数的收敛值。关键在于识别x=1是函数的第一类间断点。",
+        "common_pitfalls": "错误地直接将x=1代入函数原始表达式f(1)进行计算，而忽略了在间断点处傅里叶级数收敛于左右极限平均值这一核心定理。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "6",
+      "question_body": "设$f(x)$是连续函数,且$\\int_0^{x^3-1} f(t) dt = x$,则$f(7)=$______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "变上限积分的求导法则（莱布尼茨公式）",
+        "secondary_knowledge_points": [
+          "函数连续性的性质",
+          "定积分的概念",
+          "复合函数求导法则"
+        ],
+        "question_type": "变上限积分相关计算题",
+        "methodology_and_tricks": "对等式两边的变量x进行求导，通过链式法则处理变上限积分的导数，从而解出被积函数f(x)在某一点的值。",
+        "common_pitfalls": "在对变上限积分 ∫_0^(x³-1) f(t) dt 求导时，忘记上限是x的复合函数，从而遗漏乘以内函数(x³-1)的导数3x²。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "7",
+      "question_body": "设4阶矩阵$A=(\\alpha,\\gamma_2,\\gamma_3,\\gamma_4)$, $B=(\\beta,\\gamma_2,\\gamma_3,\\gamma_4)$, 其中$\\alpha,\\beta,\\gamma_2,\\gamma_3,\\gamma_4$都是4维列向量,且$|A|=4$,$|B|=1$,则$|A+B|=$______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "行列式的性质（特别是可加性）与行列式按列展开定理",
+        "secondary_knowledge_points": [
+          "矩阵的线性运算",
+          "矩阵行列式的定义",
+          "行列式的可加性（仅限于特定形式）"
+        ],
+        "question_type": "行列式计算题",
+        "methodology_and_tricks": "题眼在于利用矩阵加法的定义将A+B写为$A+B = (\\alpha+\\beta, 2\\gamma_2, 2\\gamma_3, 2\\gamma_4)$，再利用行列式的倍乘性质（每一列提取公因子2）和已知的|A|与|B|的值。关键在于将|A+B|转化为包含|A|和|B|的表达式，这需要敏锐地观察到A和B仅在首列不同。",
+        "common_pitfalls": "最常见的错误是误认为行列式对矩阵加法具有普遍的可加性，即错误地使用$|A+B| = |A| + |B|$。另一个易错点是在提取每一列的公因子时，忘记系数需要乘方（阶数次），此处是4阶矩阵，公因子2需计算2^4=16倍。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "8",
+      "question_body": "若函数 $y=f(x)$ 可导, 且 $f'(x_0)=\\frac{1}{2}$, 则当 $\\Delta x \\to 0$ 时, 函数 $f(x)$ 在 $x=x_0$ 处的微分 $dy$ 是 ( ) .",
+      "options": {
+        "A": "与 $\\Delta x$ 等价的无穷小",
+        "B": "与 $\\Delta x$ 同阶的无穷小",
+        "C": "比 $\\Delta x$ 低阶的无穷小",
+        "D": "比 $\\Delta x$ 高阶的无穷小"
+      },
+      "analysis": {
+        "primary_knowledge_point": "函数微分的定义：dy = f'(x0) dx",
+        "secondary_knowledge_points": [
+          "导数的定义",
+          "无穷小的比较",
+          "极限的运算"
+        ],
+        "question_type": "微分概念与无穷小比较题",
+        "methodology_and_tricks": "题眼在于直接应用微分的定义 dy = f'(x0) Δx。由于 f'(x0) 是常数 1/2，因此 dy 与 Δx 是线性关系。",
+        "common_pitfalls": "混淆微分 dy 与增量 Δy 的概念；忽略 f'(x0) ≠ 0 这一关键条件，错误判断无穷小的阶数。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "9",
+      "question_body": "设 $y=f(x)$ 是微分方程 $y''-2y'+4y=0$ 的一个解, 若 $f(x_0)>0$ 且 $f'(x_0)=0$, 则函数 $f(x)$ 在 $x=x_0$ 处 ( ) .",
+      "options": {
+        "A": "取得极大值",
+        "B": "取得极小值",
+        "C": "某邻域内单调增加",
+        "D": "某邻域内单调减少"
+      },
+      "analysis": {
+        "primary_knowledge_point": "二阶线性常系数齐次微分方程的解与极值的二阶充分条件",
+        "secondary_knowledge_points": [
+          "极值的第一充分条件",
+          "极值的第二充分条件",
+          "常微分方程解的性质"
+        ],
+        "question_type": "微分方程与极值判定综合题",
+        "methodology_and_tricks": "题眼在于利用已知微分方程将函数在特定点x0的二阶导数f''(x0)用f(x0)表示出来。根据方程y'' - 2y' + 4y = 0，当f'(x0)=0时，有f''(x0) = -4f(x0)。由于f(x0)>0，可得f''(x0)<0，从而根据极值的第二充分条件判定。",
+        "common_pitfalls": "最常见的错误是忽略微分方程本身提供的条件，试图直接对f(x)求导或错误地认为f'(x0)=0但f''(x0)符号无法确定。另一个易错点是混淆极值的必要条件和充分条件。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "10",
+      "question_body": "设空间区域 $\\Omega_1:x^2+y^2+z^2 \\le R^2 (z \\ge 0); \\Omega_2:x^2+y^2+z^2 \\le R^2 (x \\ge 0, y \\ge 0, z \\ge 0)$, 则 ( ) .",
+      "options": {
+        "A": "$$\\iiint_{\\Omega_1} x dv = 4\\iiint_{\\Omega_2} x dv$$",
+        "B": "$$\\iiint_{\\Omega_1} y dv = 4\\iiint_{\\Omega_2} y dv$$",
+        "C": "$$\\iiint_{\\Omega_1} z dv = 4\\iiint_{\\Omega_2} z dv$$",
+        "D": "$$\\iiint_{\\Omega_1} xyz dv = 4\\iiint_{\\Omega_2} xyz dv$$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "三重积分的对称性",
+        "secondary_knowledge_points": [
+          "球坐标系下的积分计算",
+          "积分区域的几何特征分析",
+          "被积函数奇偶性的判断"
+        ],
+        "question_type": "三重积分比较与对称性判断题",
+        "methodology_and_tricks": "利用积分区域的对称性和被积函数的奇偶性进行快速判断。关键是对比Ω1（上半球）和Ω2（第一卦限部分的球体）的关系，并分析被积函数在各自区域上的对称性。对于x, y, z的一次项，利用积分区域的对称性可以快速得出结论；对于xyz项，需要检验被积函数和区域的对称性质。",
+        "common_pitfalls": "常见的错误是未正确分析被积函数在给定区域上的奇偶性，或错误地认为Ω1是Ω2的四倍（只考虑z≥0而忽略x,y的符号限制），从而直接推断所有积分都存在4倍关系。需要逐项验证被积函数在对称变换下的行为。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "11",
+      "question_body": "若级数 $\\sum_{n=0}^{\\infty} a_n (x-1)^n$ 在 $x=-1$ 处收敛, 则该级数在 $x=2$ 处 ( ) .",
+      "options": {
+        "A": "条件收敛",
+        "B": "绝对收敛",
+        "C": "发散",
+        "D": "收敛性不确定"
+      },
+      "analysis": {
+        "primary_knowledge_point": "阿贝尔定理 (Abel's Theorem)",
+        "secondary_knowledge_points": [
+          "幂级数的收敛半径",
+          "幂级数的收敛区间",
+          "绝对收敛与条件收敛的定义"
+        ],
+        "question_type": "幂级数收敛性判别题",
+        "methodology_and_tricks": "题眼在于利用收敛点 $x=-1$ 与级数中心 $x=1$ 之间的距离 $d=2$ 来确定收敛半径 $R \\ge 2$。进而判断点 $x=2$ 到中心点的距离为 $1$，位于收敛区间内部，从而绝对收敛。",
+        "common_pitfalls": "混淆绝对收敛与条件收敛；未考虑到收敛区间可能比以中心为圆心、收敛半径为半径的区间更大（端点情况），但本题不涉及端点判断，核心是确定点 $x=2$ 在收敛区间内部。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "12",
+      "question_body": "$n$ 维向量组 $\\alpha_1, \\alpha_2, \\dots, \\alpha_s$ ($3 \\le s \\le n$) 线性无关的充分必要条件是 ( ) .",
+      "options": {
+        "A": "有一组不全为零的数 $k_1, k_2, \\dots, k_s$, 使得 $k_1 \\alpha_1 + k_2 \\alpha_2 + \\dots + k_s \\alpha_s \\ne 0$",
+        "B": "$\\alpha_1, \\alpha_2, \\dots, \\alpha_s$ 中任意两个向量都线性无关",
+        "C": "$\\alpha_1, \\alpha_2, \\dots, \\alpha_s$ 中存在一个向量, 它不可由其余向量线性表示",
+        "D": "$\\alpha_1, \\alpha_2, \\dots, \\alpha_s$ 中任意一个向量都不可由其余向量线性表示"
+      },
+      "analysis": {
+        "primary_knowledge_point": "向量组线性无关的定义：仅当系数全为零时，线性组合才为零向量。",
+        "secondary_knowledge_points": [
+          "向量线性表示的概念",
+          "向量组线性相关与线性无关的等价表述",
+          "向量组部分相关与整体相关的性质"
+        ],
+        "question_type": "线性代数概念选择题",
+        "methodology_and_tricks": "本题的题眼是理解线性无关的等价定义。选项D（任意一个向量都不可由其余向量线性表示）是线性无关的一个基本且重要的等价命题，而其他选项（如A、B、C）只是必要但不充分的条件，是常见的干扰项。",
+        "common_pitfalls": "1. 误认为选项A是充分条件（线性相关的定义是存在不全为零的系数使得线性组合为零向量，其否定形式A是线性无关的必要条件，但不充分，因为即使组合不为零，向量组也可能存在线性关系）。2. 误认为选项B（任意两个向量无关）是充分条件（整体无关强于部分无关，但部分无关不能推出整体无关）。3. 误认为选项C（存在一个向量不能由其余向量表示）是充分条件（这同样是必要但不充分的，例如两个线性无关的向量再加上一个可由它们线性表示的向量，这个向量组是线性相关的，但其中前两个向量都满足“不能由其余向量表示”的条件）。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "13",
+      "question_body": "设位于点 $(0,1)$ 的质点 $A$ 对质点 $M$ 的引力大小为 $\\frac{k}{r^2}(k>0$ 为常数, $r$ 为质点 $A$ 与质点 $M$ 之间的距离), 质点 $M$ 沿曲线 $y=\\sqrt{2x-x^2}$ 从点 $B(2,0)$ 运动到点 $O(0,0)$, 求此运动过程中质点 $A$ 对质点 $M$ 的引力所做的功.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "变力沿曲线做功的计算：$W = \\int_{L} \\vec{F} \\cdot d\\vec{r}$",
+        "secondary_knowledge_points": [
+          "引力场力公式与力的分解",
+          "平面曲线积分的计算",
+          "极坐标方程的运用",
+          "定积分的几何意义与应用"
+        ],
+        "question_type": "曲线积分物理应用题",
+        "methodology_and_tricks": "题眼在于识别引力是径向力，其方向始终指向点A(0,1)。解题关键步骤：1) 建立坐标系，将曲线$y=\\sqrt{2x-x^2}$识别为上半圆$(x-1)^2+y^2=1$，并用极坐标$x=1+\\cos\\theta, y=\\sin\\theta$参数化；2) 将引力向量$\\vec{F}$分解为x,y分量；3) 将曲线积分$W=\\int_L \\vec{F}\\cdot d\\vec{r}$化为对极角$\\theta$的定积分计算。",
+        "common_pitfalls": "1) 未能正确分解引力向量，忽略了力的方向性；2) 对曲线参数化选择不当，导致积分计算复杂化；3) 积分上下限确定错误，应从B点对应参数积分到O点对应参数；4) 忘记力与位移点乘的方向性。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "14",
+      "question_body": "已知 $AP=PB$, 其中 $B=\\begin{pmatrix} 1 & 0 & 0 \\\\ 0 & 0 & 0 \\\\ 0 & 0 & -1 \\end{pmatrix}, P=\\begin{pmatrix} 1 & 0 & 0 \\\\ 2 & -1 & 0 \\\\ 2 & 1 & 1 \\end{pmatrix}$, 求 $A$ 及 $A^5$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "矩阵的相似与对角化 (A = P B P⁻¹)",
+        "secondary_knowledge_points": [
+          "可逆矩阵求逆",
+          "矩阵的幂运算 (Aⁿ = P Bⁿ P⁻¹)",
+          "分块对角矩阵的运算"
+        ],
+        "question_type": "矩阵方程求解与幂运算",
+        "methodology_and_tricks": "题眼在于识别出 AP=PB 且 P 可逆，意味着 A 与 B 相似，即 A = P B P⁻¹。从而将求 A^5 转化为求 B^5，而 B 是对角分块矩阵，其幂运算极其简单。",
+        "common_pitfalls": "最易犯的错误是直接对矩阵 A 进行连续乘法求 A^5，计算量巨大且易出错。另一潜在错误是 P 的逆矩阵计算失误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "15",
+      "question_body": "已知矩阵 $A=\\begin{pmatrix} 2 & 0 & 0 \\\\ 0 & 0 & 1 \\\\ 0 & 1 & x \\end{pmatrix}$ 与 $B=\\begin{pmatrix} 2 & 0 & 0 \\\\ 0 & y & 0 \\\\ 0 & 0 & -1 \\end{pmatrix}$ 相似.\\\\(1) 求 $x,y$;\\\\(2) 求一个满足 $P^{-1}AP=B$ 的可逆矩阵 $P$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "相似矩阵具有相同的特征值",
+        "secondary_knowledge_points": [
+          "特征值与特征向量的求解",
+          "矩阵的迹与行列式",
+          "求解齐次线性方程组以得到特征向量",
+          "由特征向量构造可逆矩阵P"
+        ],
+        "question_type": "矩阵相似问题",
+        "methodology_and_tricks": "利用相似矩阵迹和行列式相等建立方程，或更直接地，利用相似矩阵具有相同特征多项式（从而特征值相同）来求解参数。求可逆矩阵P的关键是分别求出矩阵A和B对应于相同特征值的特征向量，并将这些特征向量作为列向量构成P。",
+        "common_pitfalls": "1. 忽略矩阵的相似是全局性质，仅凭部分特征值对应关系求解参数可能导致错误。2. 在求解特征向量时，未能正确处理自由变量，导致特征向量基不完整或线性相关。3. 构造矩阵P时，未能使A和B的特征向量顺序与B的特征值排列顺序一致，导致P^(-1)AP不等于B。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "16",
+      "question_body": "设函数 $f(x)$ 在区间 $[a,b]$ 上连续, 且在 $(a,b)$ 内有 $f'(x)>0$. 证明: 在 $(a,b)$ 内存在唯一的 $\\xi$, 使曲线 $y=f(x)$ 与两直线 $y=f(\\xi), x=a$ 所围成的平面图形的面积 $S_1$ 是曲线 $y=f(x)$ 与两直线 $y=f(\\xi), x=b$ 所围成平面图形面积 $S_2$ 的 $3$ 倍.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "积分中值定理",
+        "secondary_knowledge_points": [
+          "函数单调性",
+          "连续函数介值定理",
+          "定积分的几何意义"
+        ],
+        "question_type": "中值定理证明题",
+        "methodology_and_tricks": "题眼在于将抽象的平面图形面积比关系转化为关于中间点函数值 f(ξ) 的积分方程。通过设定上限为变量 t 的积分函数 F(t)，并利用连续函数介值定理证明存在性，利用函数严格单调性证明唯一性。",
+        "common_pitfalls": "未能正确构造与 f(ξ) 相关的积分方程；忽略利用 f'(x)>0 导出的严格单调性来证明唯一性；面积 S1 和 S2 的积分上下限设定错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "17",
+      "question_body": "设三次独立重复试验中, 事件 $A$ 出现的概率相等, 若已知 $A$ 至少出现一次的概率为 $\\frac{19}{27}$, 则事件 $A$ 在一次试验中出现的概率为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "伯努利概型 (n重伯努利试验的概率计算)",
+        "secondary_knowledge_points": [
+          "对立事件概率计算",
+          "代数方程求解"
+        ],
+        "question_type": "伯努利概型概率计算题",
+        "methodology_and_tricks": "利用对立事件简化概率计算。事件A至少出现一次的对立事件是事件A一次也不出现。”A至少出现一次的概率为19/27“等价于”A一次也不出现的概率为1 - 19/27 = 8/27“。设单次试验中A出现的概率为p，则三次试验中A一次也不出现的概率为(1-p)^3。建立方程 (1-p)^3 = 8/27 求解p。",
+        "common_pitfalls": "1.未能识别出这是n重伯努利试验模型。2.未能利用对立事件将”至少“问题转化为其对立事件的”一次也不“问题，而是直接对”至少一次“套用公式，导致计算复杂或出错。3.从(1-p)^3 = 8/27 解得 1-p = 2/3 后，计算p时出现符号错误，错误地写成 p = -2/3 或 p = 3/2。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "18",
+      "question_body": "在区间 $(0,1)$ 中随机地取两个数, 则事件“两数之和小于 $\\frac{6}{5}$”的概率为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "几何概型（面积比）",
+        "secondary_knowledge_points": [
+          "二维连续型随机变量的均匀分布",
+          "面积积分计算",
+          "概率的基本性质"
+        ],
+        "question_type": "几何概型概率计算题",
+        "methodology_and_tricks": "题眼是将抽象的概率问题转化为直观的几何图形面积比。具体技巧是：设随机变量X和Y分别代表两个随机数，则点(X, Y)服从单位正方形(0,1)×(0,1)上的均匀分布。所求概率转化为由直线x + y = 6/5与正方形在第一象限所围成区域的面积与正方形面积的比值。",
+        "common_pitfalls": "最常见的错误是直接用6/5除以2得到3/5作为答案，而忽略了在单位正方形内，满足x+y<6/5的区域并非一个完整的三角形（因为x和y本身小于1）。正确做法是计算直线x+y=6/5与正方形边界交点，并求对应区域面积。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "19",
+      "question_body": "设随机变量 $X$ 服从均值为 $10$, 均方差为 $0.02$ 的正态分布, 已知 $\\Phi(x) = \\frac{1}{\\sqrt{2\\pi}} \\int_{-\\infty}^{x} e^{-\\frac{u^2}{2}} du$, $\\Phi(2.5)=0.9938$, 则 $X$ 落在区间 $(9.95, 10.05)$ 内的概率为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "正态分布的标准化与概率计算：若 X~N(μ, σ²)，则 Z = (X - μ) / σ ~ N(0,1)，且 P(a < X < b) = Φ((b-μ)/σ) - Φ((a-μ)/σ)。",
+        "secondary_knowledge_points": [
+          "正态分布的定义与性质",
+          "标准正态分布的分布函数Φ(x)及其性质",
+          "概率的基本运算法则"
+        ],
+        "question_type": "正态分布概率计算题",
+        "methodology_and_tricks": "题眼在于识别‘均值为10，均方差为0.02’意味着均值μ=10，标准差σ=0.02。解题的关键步骤是先将一般正态分布变量X通过标准化变换Z=(X-10)/0.02转化为标准正态分布变量Z，再计算区间(9.95, 10.05)对应的Z值区间，最后利用标准正态分布函数Φ(x)的已知值（Φ(2.5)=0.9938）求出概率。",
+        "common_pitfalls": "1. 错误地将‘均方差为0.02’理解为方差σ²=0.02，实际上‘均方差’通常指标准差σ，本题中σ=0.02。此误解将导致标准化公式中的分母错误（分母应为标准差而非方差），从而得出完全错误的概率值。2. 在计算区间概率时，忘记标准正态分布函数Φ(x)的定义是P(Z ≤ x)，导致区间概率公式使用错误。3. 忽视题目给定的Φ(2.5)值，试图自行计算或查表，增加计算复杂度或出错风险。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "20",
+      "question_body": "设随机变量 $X$ 的概率密度函数为 $f_X(x) = \\frac{1}{\\pi(1+x^2)}$, 求随机变量 $Y=1-\\sqrt[3]{X}$ 的概率密度函数 $f_Y(y)$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "随机变量函数的概率密度函数求解（公式法：若 Y = g(X)，且 g(x) 严格单调，则 f_Y(y) = f_X(h(y)) * |h'(y)|，其中 h(y) 是 g(x) 的反函数）",
+        "secondary_knowledge_points": [
+          "概率密度函数的性质（非负性、规范性）",
+          "复合函数求导法则",
+          "幂函数与根式函数的反函数求解",
+          "绝对值的处理"
+        ],
+        "question_type": "随机变量函数的概率密度函数计算题",
+        "methodology_and_tricks": "题眼在于识别变换 Y = 1 - X^(1/3) 在整个定义域 (-∞, +∞) 上是一个严格单调递减函数。因此可以放心使用公式法。关键步骤是正确求出反函数 X = h(Y) 及其导数 h'(Y)，并代入公式。求解反函数时，先处理立方根再处理线性变换的顺序很重要。",
+        "common_pitfalls": "1. 最致命的错误是忽略使用公式法的前提（函数严格单调）。虽然此题单调，但这是必须验证的关键点。2. 在求反函数时，从 Y = 1 - X^(1/3) 解出 X 的代数运算出错。3. 忘记概率密度函数公式中绝对值的绝对值符号，或对单调递减函数的导数符号处理不当。4. 得到最终表达式后，未明确指出概率密度函数的定义域（即 Y 的取值范围）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    }
+  ],
+  "summary": {
+    "overview": {
+      "subject_domain": "考研数学一",
+      "total_questions": 15,
+      "overall_difficulty_assessment": "试卷整体难度中等，知识点覆盖广泛，微积分和线性代数是重点模块，计算量适中但强调概念理解和积分变换技巧。"
+    },
+    "module_weight_analysis": [
+      {
+        "module": "幂级数与级数",
+        "count": 2,
+        "percentage": "13%"
+      },
+      {
+        "module": "函数、极限与连续",
+        "count": 3,
+        "percentage": "20%"
+      },
+      {
+        "module": "一元函数微积分学",
+        "count": 2,
+        "percentage": "13%"
+      },
+      {
+        "module": "多元函数微积分学（含曲线曲面积分）",
+        "count": 3,
+        "percentage": "20%"
+      },
+      {
+        "module": "微分方程",
+        "count": 1,
+        "percentage": "7%"
+      },
+      {
+        "module": "线性代数",
+        "count": 3,
+        "percentage": "20%"
+      },
+      {
+        "module": "概率论与数理统计",
+        "count": 4,
+        "percentage": "27%"
+      }
+    ],
+    "synthesis_and_flexibility_analysis": "试卷对知识网络的综合性要求较高，约有40%的题目涉及跨章节或跨概念的知识点融合，例如微分方程与极值判定的结合、曲线积分与物理应用的结合、以及矩阵相似与对角化的综合运用，需要考生具备灵活的知识迁移能力。",
+    "computational_skills_diagnosis": "计算量整体适中，主要集中在曲面积分、曲线积分和多重积分的计算上，要求熟练掌握高斯公式、对称性分析和参数化方法；在代数运算方面，矩阵求逆与幂运算是常见出错点；概率统计部分的计算技巧性较强，需注意标准化和几何概型的面积计算。",
+    "strategic_recommendations": {
+      "focus_areas": [
+        "多元函数微积分（曲面积分、曲线积分）",
+        "线性代数（矩阵相似、对角化、行列式性质）",
+        "概率论（几何概型、随机变量函数的分布）",
+        "幂级数与傅里叶级数"
+      ],
+      "predicted_pitfalls_summary": [
+        "忽略定义域或积分上下限的细节（如端点分析、变量代换后未正确代回）",
+        "混淆概念定义（如线性无关的等价条件、微分与增量的区别）",
+        "公式应用条件不满足（如高斯公式、变上限积分求导的链式法则）",
+        "计算粗心（如矩阵行列式倍乘时的阶数遗忘、概率标准化时的参数误解）"
+      ],
+      "improvement_suggestions": "强化核心概念的理解与辨析，尤其是线性代数和微积分中的基本定理；加强综合题的训练，提高将实际问题转化为数学模型的能力；在计算中养成检查定义域、对称性和特殊点的习惯，提升计算的准确性和效率。"
+    }
+  }
+}

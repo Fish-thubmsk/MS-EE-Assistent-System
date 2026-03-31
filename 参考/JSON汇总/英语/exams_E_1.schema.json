@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "考研英语(一)题库 - E1数据集 Schema定义",
+  "description": "16个套卷(2010-2024年)的考研英语(一)真题及答案JSON结构定义",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "title": "考试套卷对象",
+    "description": "单个年份的完整英语真题套卷",
+    "required": ["title", "questions"],
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "套卷标题，包含年份和来源信息",
+        "examples": [
+          "2024届考研英语（一）真题及答案（回忆版）",
+          "2023年201英语（一）真题解析",
+          "2010年考研英语（一）真题"
+        ]
+      },
+      "questions": {
+        "type": "array",
+        "title": "题目数组",
+        "description": "该套卷下的所有题目(通常9题：5篇阅读理解+1完型填空+翻译+作文+新题型)",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "title": "题目对象",
+          "description": "单个题目(可能是阅读理解、完型填空等，包含多个小问)",
+          "required": ["question_number", "type", "article", "sub_questions"],
+          "properties": {
+            "question_number": {
+              "type": "integer",
+              "description": "题号(套卷内的序号，通常1-9)",
+              "minimum": 1,
+              "examples": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            },
+            "type": {
+              "type": "string",
+              "description": "题型分类",
+              "enum": [
+                "单选题",
+                "完型填空",
+                "翻译",
+                "作文",
+                "新题型",
+                "阅读理解"
+              ],
+              "examples": ["单选题", "完型填空"]
+            },
+            "article": {
+              "type": "string",
+              "description": "文章正文或题干。对于阅读理解/完型填空，包含完整文章，其中{1}{2}等表示待填充位置(表现为数字如\\n1\\n)",
+              "minLength": 1,
+              "examples": [
+                "There's nothing more welcoming than a door opening for you.\\n1\\nthe need to be touched..."
+              ]
+            },
+            "article_translation": {
+              "type": "string",
+              "description": "文章的中文翻译(当前数据集全为空字符串，可选预留字段)",
+              "examples": ["", "null字符串"]
+            },
+            "sub_questions": {
+              "type": "array",
+              "title": "小问数组",
+              "description": "该题下的所有小问。一道阅读题通常包含4-5个小问，完型填空包含20个小问",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "title": "小问对象",
+                "description": "单个小问，包含选项、答案和解析",
+                "required": ["sub_question_number", "options", "answer"],
+                "properties": {
+                  "sub_question_number": {
+                    "type": "integer",
+                    "description": "小问在该题内的序号(1开始)",
+                    "minimum": 1,
+                    "examples": [1, 2, 3, 4, 5, 20]
+                  },
+                  "options": {
+                    "type": "object",
+                    "title": "选项对象",
+                    "description": "标准四选一，键为A/B/C/D，值为选项文本",
+                    "required": ["A", "B", "C", "D"],
+                    "properties": {
+                      "A": {
+                        "type": "string",
+                        "description": "选项A",
+                        "minLength": 1
+                      },
+                      "B": {
+                        "type": "string",
+                        "description": "选项B",
+                        "minLength": 1
+                      },
+                      "C": {
+                        "type": "string",
+                        "description": "选项C",
+                        "minLength": 1
+                      },
+                      "D": {
+                        "type": "string",
+                        "description": "选项D",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "answer": {
+                    "type": "string",
+                    "description": "标准答案，单个字母",
+                    "enum": ["A", "B", "C", "D"],
+                    "examples": ["A", "B", "C", "D"]
+                  },
+                  "analysis": {
+                    "type": "string",
+                    "description": "小问解析(当前数据集全为空字符串，可选字段)",
+                    "examples": ["", "题目考查..."]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

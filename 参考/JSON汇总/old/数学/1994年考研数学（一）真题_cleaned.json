@@ -1,0 +1,518 @@
+{
+  "exam_name": "1994年考研数学（一）真题",
+  "questions": [
+    {
+      "question_number": "1",
+      "question_body": "\\lim_{x \\to 0} \\cot x \\left( \\frac{1}{\\sin x} - \\frac{1}{x} \\right) = \\underline{\\quad \\quad \\quad \\quad}.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "极限的运算法则与等价无穷小替换",
+        "secondary_knowledge_points": [
+          "三角函数恒等变换（\\cot x = \\frac{\\cos x}{\\sin x}）",
+          "极限的四则运算法则",
+          "第一个重要极限 \\lim_{x \\to 0} \\frac{\\sin x}{x} = 1 及其推广形式"
+        ],
+        "question_type": "极限计算题",
+        "methodology_and_tricks": "题眼在于通过通分合并括号内的两个分式，再利用三角函数恒等式 \\cot x = \\frac{\\cos x}{\\sin x} 进行化简，将表达式转化为 \\frac{x - \\sin x}{x \\sin^2 x} \\cos x 的标准形式。此时，对分子 x - \\sin x 使用等价无穷小替换（或其泰勒展开），即 x - \\sin x \\sim \\frac{1}{6}x^3，同时利用 \\sin x \\sim x，可快速求出极限。",
+        "common_pitfalls": "最常见的错误是第一步直接将 \\cot x 替换为 \\frac{1}{x} 或 \\frac{\\cos x}{x} 等错误的等价形式，从而在减法中造成错误。另一个常见错误是忽略了极限的四则运算法则的前提条件（极限存在且分母不为零），在未通分化简的情况下直接对每一项使用等价无穷小替换，导致得到0或无穷大等错误结果。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "2",
+      "question_body": "曲面 $z - e^z + 2xy = 3$ 在点 $(1,2,0)$ 处的切平面方程为 $\\underline{\\quad \\quad \\quad \\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "曲面的切平面方程公式：F_x(x0, y0, z0)(x - x0) + F_y(x0, y0, z0)(y - y0) + F_z(x0, y0, z0)(z - z0) = 0",
+        "secondary_knowledge_points": [
+          "多元函数全微分法",
+          "隐函数求偏导法",
+          "空间解析几何中平面方程的点法式"
+        ],
+        "question_type": "空间解析几何与多元微分综合题",
+        "methodology_and_tricks": "将曲面方程整理为隐函数 F(x,y,z)=0 的标准形式后直接求偏导，代入给定点坐标得到法向量。在求偏导 F_z 时，需特别注意对 e^z 项的求导结果。",
+        "common_pitfalls": "容易遗漏对 e^z 项求偏导时产生的 -e^z 项前的负号，或在代入点坐标时计算 F_z(1,2,0) = (1 - e^0) = 0 而误认为法向量不存在（实际上该点处法向量确实存在且可求）。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "3",
+      "question_body": "设 $u = e^{-x} \\sin \\frac{x}{y}$, 则 $\\frac{\\partial^2 u}{\\partial x \\partial y}$ 在点 $(2, \\frac{1}{\\pi})$ 处的值为 $\\underline{\\quad \\quad \\quad \\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "多元函数高阶偏导数的计算（链式法则与乘积法则）",
+        "secondary_knowledge_points": [
+          "复合函数求偏导",
+          "基本初等函数的导数公式",
+          "偏导数在某点的取值计算"
+        ],
+        "question_type": "多元函数偏导数计算题",
+        "methodology_and_tricks": "题眼在于正确计算混合偏导数。由于混合偏导数在连续条件下与求导顺序无关，可直接先对x求偏导，再对y求偏导。关键技巧是应用乘积法则和链式法则处理函数$e^{-x} \\sin(x/y)$的结构，并最终将具体点$(2, 1/\\pi)$代入化简后的表达式。",
+        "common_pitfalls": "1. 混淆对x和y的求导顺序或遗漏链式法则中的内部函数导数。2. 在应用乘积法则时漏项，特别是忘记对$e^{-x}$求导。3. 在代入具体数值时，未能正确计算$\\sin(2\\pi)$和$\\cos(2\\pi)$的值（分别为0和1），导致最终结果错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "4",
+      "question_body": "设区域 $D$ 为 $x^2 + y^2 \\le R^2$, 则 $\\iint_D \\left( \\frac{x^2}{a^2} + \\frac{y^2}{b^2} \\right) dx \\text{ } dy = \\underline{\\quad \\quad \\quad \\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "利用极坐标计算二重积分",
+        "secondary_knowledge_points": [
+          "二重积分的对称性",
+          "极坐标与直角坐标的转换关系 (x = rcosθ, y = rsinθ)",
+          "常用积分公式 ∫cos²θ dθ, ∫sin²θ dθ 在对称区间上的化简"
+        ],
+        "question_type": "二重积分计算题",
+        "methodology_and_tricks": "题眼在于积分区域为圆盘，故采用极坐标变换。将被积函数中的 x² 和 y² 分别用 (rcosθ)² 和 (rsinθ)² 替换，并利用积分区间的对称性对角度θ的积分进行化简。",
+        "common_pitfalls": "最常见的错误是忘记极坐标变换后积分微元需要乘以雅可比行列式 r，即 dxdy = rdrdθ。另一个常见错误是未能利用对称性化简 ∫₀^{2π} cos²θ dθ 和 ∫₀^{2π} sin²θ dθ 的计算，直接分别计算而非利用它们之和为 ∫₀^{2π} dθ = 2π 的关系。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "5",
+      "question_body": "已知 $\\alpha = (1,2,3)$, $\\beta = (1, \\frac{1}{2}, \\frac{1}{3})$, 设 $A = \\alpha^T \\beta$, 其中 $\\alpha^T$ 是 $\\alpha$ 的转置, 则 $A^n = \\underline{\\quad \\quad \\quad \\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "矩阵乘法结合律 (AB)C = A(BC)，特别是秩一矩阵幂的运算性质 (α^T β)^n = α^T (β α^T)^{n-1} β",
+        "secondary_knowledge_points": [
+          "矩阵的转置运算",
+          "向量的内积（点积）",
+          "秩一矩阵的性质",
+          "矩阵幂的定义"
+        ],
+        "question_type": "矩阵幂的计算题",
+        "methodology_and_tricks": "题眼是发现 A = α^T β 是一个秩一矩阵（列向量乘以行向量）。利用秩一矩阵的幂次性质：A^n = (α^T β)^n = (β α^T)^{n-1} (α^T β)，其中 β α^T 是一个标量（即向量内积）。先计算常数 k = β α^T = 1*1 + (1/2)*2 + (1/3)*3 = 3，则 A^n = (3)^{n-1} A = 3^{n-1} α^T β。",
+        "common_pitfalls": "误将矩阵的幂 (α^T β)^n 直接计算为 α^T^n β^n（矩阵幂不可分别分配）；未能识别出 α^T β 是秩一矩阵而直接进行复杂的矩阵乘法；计算内积 β α^T 时出现算术错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "6",
+      "question_body": "设 $M = \\int_{-\\frac{\\pi}{2}}^{\\frac{\\pi}{2}} \\frac{\\sin x}{1+x^2} \\cos^4 x \\text{ } dx$, $N = \\int_{-\\frac{\\pi}{2}}^{\\frac{\\pi}{2}} (\\sin^3 x + \\cos^4 x) \\text{ } dx$, $P = \\int_{-\\frac{\\pi}{2}}^{\\frac{\\pi}{2}} (x^2 \\sin^3 x - \\cos^4 x) \\text{ } dx$, 则 ( ).",
+      "options": {
+        "A": "N < P < M",
+        "B": "M < P < N",
+        "C": "N < M < P",
+        "D": "P < M < N"
+      },
+      "analysis": {
+        "primary_knowledge_point": "定积分的对称性（奇函数与偶函数的积分性质）",
+        "secondary_knowledge_points": [
+          "偶函数的定义",
+          "奇函数的定义",
+          "定积分的基本性质",
+          "三角函数的幂次化简"
+        ],
+        "question_type": "定积分比较题",
+        "methodology_and_tricks": "分析被积函数在对称区间上的奇偶性，利用奇函数在对称区间上积分为零、偶函数积分可简化计算的性质，快速估算或确定积分值的正负及大小关系。",
+        "common_pitfalls": "未能正确识别函数的奇偶性，特别是被三角函数和多项式混合构成的函数所迷惑；在判断大小关系时，忽略了积分值的符号（正负）而直接比较绝对值。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "7",
+      "question_body": "二元函数 $f(x,y)$ 在点 $(x_0, y_0)$ 处两个偏导数 $f'_x(x_0, y_0), f'_y(x_0, y_0)$ 存在是 $f(x,y)$ 在该点连续的 ( ).",
+      "options": {
+        "A": "充分条件但非必要条件",
+        "B": "必要条件但非充分条件",
+        "C": "充分必要条件",
+        "D": "既非充分条件又非必要条件"
+      },
+      "analysis": {
+        "primary_knowledge_point": "可微性、连续性与偏导数存在性之间的关系",
+        "secondary_knowledge_points": [
+          "偏导数的定义",
+          "函数连续的定义",
+          "可微性的定义",
+          "一元函数导数存在与连续的关系"
+        ],
+        "question_type": "概念判断题",
+        "methodology_and_tricks": "通过构造反例进行判断。关键点是：1. 一元函数在某点导数存在则必连续，但二元函数在某点的两个偏导数存在，并不能推出该点连续；2. 函数在某点连续，也推不出该点的偏导数存在。因此两者之间无必然的推出关系。经典反例是分段函数 f(x,y) = xy/(x²+y²) 当 (x,y)≠(0,0) 且 f(0,0)=0，该函数在(0,0)处两个偏导数存在但不连续。",
+        "common_pitfalls": "错误地将一元函数的结论（导数存在必连续）盲目推广到二元函数；误认为偏导数存在是连续的必要条件。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "8",
+      "question_body": "设常数 $\\lambda > 0$, 且级数 $\\sum_{n=1}^{\\infty} a_n^2$ 收敛, 则级数 $\\sum_{n=1}^{\\infty} (-1)^n \\frac{|a_n|}{\\sqrt{n^2+\\lambda}}$ ( ).",
+      "options": {
+        "A": "发散",
+        "B": "条件收敛",
+        "C": "绝对收敛",
+        "D": "收敛性与 $\\lambda$ 有关"
+      },
+      "analysis": {
+        "primary_knowledge_point": "级数的绝对收敛与条件收敛判别法",
+        "secondary_knowledge_points": [
+          "比较判别法",
+          "p-级数",
+          "交错级数判别法（莱布尼茨判别法）",
+          "柯西-施瓦茨不等式"
+        ],
+        "question_type": "无穷级数敛散性判别",
+        "methodology_and_tricks": "利用比较判别法的极限形式，结合已知的 p-级数性质（此处 p=1 的级数发散）和已知条件 sum a_n^2 收敛，通过构造 b_n = |a_n|/n 并应用柯西不等式估计其平方和，从而判断原级数是否绝对收敛。",
+        "common_pitfalls": "未能有效利用 sum a_n^2 收敛这一条件与通项的分母结构建立比较关系；混淆绝对收敛与条件收敛的判别步骤；错误地直接对交错级数部分应用莱布尼茨判别法而忽略绝对值级数的敛散性。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "9",
+      "question_body": "设 $\\lim_{x \\to 0} \\frac{a \\tan x + b(1-\\cos x)}{c \\ln(1-2x) + d(1-e^{-x^2})} = 2$, 其中 $a^2+c^2 \\ne 0$, 则必有 ( ).",
+      "options": {
+        "A": "$b = 4d$",
+        "B": "$b = -4d$",
+        "C": "$a = 4c$",
+        "D": "$a = -4c$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "极限的四则运算法则及等价无穷小代换",
+        "secondary_knowledge_points": [
+          "泰勒公式展开",
+          "洛必达法则",
+          "极限存在的条件（分子分母同阶）"
+        ],
+        "question_type": "极限计算题",
+        "methodology_and_tricks": "利用泰勒展开或等价无穷小代换，分别确定分子和分母关于x的最低阶无穷小项。为了使极限存在且为2，分子和分母必须是同阶无穷小。通过比较分子和分母的系数关系建立方程。",
+        "common_pitfalls": "未能正确识别分子或分母的主部（最低阶无穷小项），或者在使用等价无穷小时代换错误（例如，在乘除运算中错误地替换了加减项）。忽略极限存在性对分子分母阶数的要求。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "10",
+      "question_body": "已知向量组 $\\alpha_1, \\alpha_2, \\alpha_3, \\alpha_4$ 线性无关, 则向量组 ( )",
+      "options": {
+        "A": "$\\alpha_1 + \\alpha_2, \\alpha_2 + \\alpha_3, \\alpha_3 + \\alpha_4, \\alpha_4 + \\alpha_1$ 线性无关",
+        "B": "$\\alpha_1 - \\alpha_2, \\alpha_2 - \\alpha_3, \\alpha_3 - \\alpha_4, \\alpha_4 - \\alpha_1$ 线性无关",
+        "C": "$\\alpha_1 + \\alpha_2, \\alpha_2 + \\alpha_3, \\alpha_3 + \\alpha_4, \\alpha_4 - \\alpha_1$ 线性无关",
+        "D": "$\\alpha_1 + \\alpha_2, \\alpha_2 + \\alpha_3, \\alpha_3 - \\alpha_4, \\alpha_4 - \\alpha_1$ 线性无关"
+      },
+      "analysis": {
+        "primary_knowledge_point": "向量组线性相关性的定义与判定",
+        "secondary_knowledge_points": [
+          "向量组的秩与矩阵的秩的关系",
+          "线性组合与线性表示",
+          "矩阵的初等变换"
+        ],
+        "question_type": "向量组线性相关性判别题",
+        "methodology_and_tricks": "通过构造向量组的线性组合并令其为零，利用原始向量组的线性无关性得到关于组合系数的齐次线性方程组，通过分析该方程组的系数矩阵（或其行列式）的秩来判断向量组是否线性无关。关键在于将新向量组表示为原始向量组的线性组合矩阵，并考察该组合矩阵是否可逆或满秩。",
+        "common_pitfalls": "1. 仅凭直观感觉或部分线性关系判断，而忽略严格的定义和推导。2. 未能正确将新向量组表示为原始向量组的系数矩阵。3. 在计算组合系数行列式时发生符号错误或计算失误。4. 对于四个向量的情况，误认为只要任意三个线性无关则整个向量组就线性无关。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "11",
+      "question_body": "设 $\\begin{cases} x = \\cos t^2 \\\\ y = t \\cos t^2 - \\int_1^{t^2} \\frac{1}{2\\sqrt{u}} \\cos u \\,du \\end{cases}$, 求 $\\frac{dy}{dx}, \\frac{d^2y}{dx^2}$ 在 $t = \\sqrt{\\frac{\\pi}{2}}$ 时的值.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "参数方程求导法（dy/dx = (dy/dt) / (dx/dt)）",
+        "secondary_knowledge_points": [
+          "莱布尼茨公式（乘积求导法则）",
+          "变上限积分求导",
+          "复合函数求导",
+          "参数方程二阶导数公式 (d²y/dx² = [d(dy/dx)/dt] / (dx/dt))"
+        ],
+        "question_type": "参数方程求导与计算",
+        "methodology_and_tricks": "题眼在于识别 y 表达式中的变上限积分项。关键在于利用牛顿-莱布尼茨公式对 y 关于 t 求导时，能大幅简化表达式：dy/dt = cos(t²) - 2t² sin(t²) - (1/(2√(t²)) cos(t²) * 2t) = -2t² sin(t²)。这使得后续计算大大简化。",
+        "common_pitfalls": "1. 对变上限积分 ∫₁^(t²) f(u) du 求导时，容易忽略对上限 t² 的复合求导（链式法则），错误地直接写成 f(t²)。正确应为 f(t²) * 2t。2. 计算参数方程二阶导数时，公式记错或代入过程混乱。3. 在最后代入 t=√(π/2) 时，三角函数值计算错误（如 cos(π/2)=0, sin(π/2)=1）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "12",
+      "question_body": "将函数 $f(x) = \\frac{1}{4} \\ln \\frac{1+x}{1-x} + \\frac{1}{2} \\arctan x - x$ 展开成 $x$ 的幂级数.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "幂级数展开：间接展开法（利用已知展开式进行线性组合）",
+        "secondary_knowledge_points": [
+          "导数的幂级数展开",
+          "常见函数的幂级数展开式（如 ln((1+x)/(1-x)), arctan(x)）",
+          "幂级数的四则运算（逐项求导、加减）"
+        ],
+        "question_type": "函数幂级数展开题",
+        "methodology_and_tricks": "题目的关键技巧是避免直接对f(x)求高阶导数。应分别对f(x)求导，得到f'(x)的表达式，而f'(x)恰好可以转化为两个已知幂级数展开式（1/(1-x^2)和1/(1+x^2)）的线性组合。分别展开f'(x)后，再通过积分还原得到f(x)的幂级数展开式，并利用f(0)=0确定积分常数。",
+        "common_pitfalls": "最常见的错误是试图直接对f(x)求高阶导数，这会因函数形式复杂而导致计算繁琐且易出错。另一个潜在错误是在对幂级数进行积分运算后，忘记处理积分常数，或错误地确定了常数项。在合并两个幂级数时，未统一求和下标和幂次也可能导致错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "13",
+      "question_body": "求 $\\int \\frac{dx}{\\sin 2x + 2\\sin x}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "三角函数积分法（利用万能公式代换或恒等变形）",
+        "secondary_knowledge_points": [
+          "三角恒等变换（和差化积、倍角公式）",
+          "有理函数积分法（部分分式分解）"
+        ],
+        "question_type": "三角函数积分计算题",
+        "methodology_and_tricks": "题眼在于识别并简化分母。关键步骤是应用三角恒等式 sin2x = 2sinxcosx，将分母化为 2sinx(cosx+1)，再通过半角公式或万能公式代换 t=tan(x/2) 将其转化为有理函数积分。",
+        "common_pitfalls": "最常见的错误是未能有效简化分母的三角表达式，导致后续积分复杂化；在应用万能公式后，对得到的有理函数进行部分分式分解时可能出现计算错误；忽略代换后dx的转换（dx = 2dt/(1+t²)）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "14",
+      "question_body": "设 $f(x)$ 具有二阶连续导数, $f(0)=0, f'(0)=1$, 且 $[xy(x+y)-f(x)y]dx+[f'(x)+x^2y]dy=0$ 为一个全微分方程, 求 $f(x)$ 及此全微分方程的通解.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "全微分方程的充要条件（由恰当条件导出关于未知函数的常微分方程）",
+        "secondary_knowledge_points": [
+          "二元函数全微分的性质与计算",
+          "二阶常系数线性非齐次微分方程的求解",
+          "初始条件的应用"
+        ],
+        "question_type": "全微分方程与微分方程综合题",
+        "methodology_and_tricks": "利用全微分方程的恰当条件（∂P/∂y = ∂Q/∂x）建立一个关于未知函数f(x)的二阶线性常微分方程，并结合初始条件f(0)=0, f'(0)=1进行求解。",
+        "common_pitfalls": "在利用恰当条件建立方程时，对f'(x)关于y的偏导数处理错误（应为0）；在求解二阶常系数线性非齐次微分方程时，特解形式设定错误或计算失误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "15",
+      "question_body": "设 $f(x)$ 在 $x=0$ 的某一邻域内具有二阶连续导数, 且 $\\lim\\limits_{x\\to 0} \\frac{f(x)}{x}=0$, 证明: 级数 $\\sum\\limits_{n=1}^{\\infty} f\\left(\\frac{1}{n}\\right)$ 绝对收敛.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "极限与无穷小的关系，泰勒展开定理",
+        "secondary_knowledge_points": [
+          "绝对收敛的定义与判别法",
+          "比较判别法的极限形式",
+          "p-级数的敛散性"
+        ],
+        "question_type": "无穷级数敛散性判别",
+        "methodology_and_tricks": "利用已知极限条件推出函数在零点附近的泰勒展开式，从而将级数通项与已知收敛性的p-级数进行比较。关键在于从 $\\lim_{x\\to 0} f(x)/x = 0$ 推导出 $f(0)=0$ 和 $f'(0)=0$，进而得到 $f(x) = \\frac{1}{2}f''(\\xi)x^2$ 的表达式。",
+        "common_pitfalls": "未能准确利用极限条件推出 $f(0)$ 和 $f'(0)$ 的值；泰勒展开的余项处理不当；比较判别法使用时未能正确构造比较级数。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "16",
+      "question_body": "已知点 $A$ 与点 $B$ 的直角坐标分别为 $(1,0,0)$ 与 $(0,1,1)$, 线段 $AB$ 绕 $z$ 轴旋转一周所围成的旋转曲面为 $S$, 求由 $S$ 及两平面 $z=0, z=1$ 所围成的立体的体积.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "旋转体体积计算 (绕z轴旋转的立体体积公式: V = π ∫ [x(z)]² dz)",
+        "secondary_knowledge_points": [
+          "空间直线参数方程",
+          "点到旋转轴的距离计算",
+          "定积分的几何应用"
+        ],
+        "question_type": "旋转体体积计算题",
+        "methodology_and_tricks": "题眼在于理解线段AB绕z轴旋转时，其上任意一点到z轴的距离（即该点在xOy平面上投影的半径）随z坐标变化的规律。关键在于建立线段AB的参数方程，并求出其绕z轴旋转时在任意高度z处的截面半径表达式。",
+        "common_pitfalls": "最易犯的错误是误将线段AB绕z轴旋转形成的曲面当作圆锥面，从而错误使用圆锥体积公式；另一个常见错误是未能正确建立旋转半径与高度z的函数关系，或在积分上下限的确定上出错。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "17",
+      "question_body": "设四元齐次线性方程组 $(\\mathrm{I})$ 为 $\\begin{cases} x_1 + x_2 = 0, \\\\ x_2 - x_4 = 0. \\end{cases}$ 又已知某线性齐次方程组 $(\\mathrm{II})$ 的通解为 $k_1 (0,1,1,0)^{\\mathrm{T}} + k_2 (-1,2,2,1)^{\\mathrm{T}}$. (1) 求线性方程组 $(\\mathrm{I})$ 的基础解系; (2) 问线性方程组 $(\\mathrm{I})$ 与 $(\\mathrm{II})$ 是否有非零公共解? 若有, 求出所有非零的公共解; 若没有, 说明理由.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "齐次线性方程组的基础解系",
+        "secondary_knowledge_points": [
+          "矩阵的秩与解空间维数",
+          "向量组的线性相关性",
+          "线性方程组的公共解"
+        ],
+        "question_type": "线性方程组基础解系与公共解判定",
+        "methodology_and_tricks": "题目的关键在于将方程组(II)的通解表示代入方程组(I)的方程中，通过联立条件求解参数k1和k2，以确定公共解的存在性及具体形式。",
+        "common_pitfalls": "考生可能忽略公共解必须同时满足两个方程组的条件，仅从形式上进行判断；或者在求解基础解系时未能正确识别自由变量，导致解系不完整或错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "18",
+      "question_body": "设 $A$ 为 $n$ 阶非零方阵，$A^*$ 为 $A$ 的伴随矩阵，$A^T$ 是 $A$ 的转置矩阵，当 $A^* = A^T$ 时，证明：$|A| \\neq 0$。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "伴随矩阵的性质 AA* = A*A = |A|I_n",
+        "secondary_knowledge_points": [
+          "矩阵的秩",
+          "矩阵的迹",
+          "行列式的计算",
+          "齐次线性方程组解的理论"
+        ],
+        "question_type": "矩阵性质证明题",
+        "methodology_and_tricks": "利用已知条件 A* = A^T 和伴随矩阵的核心性质 AA* = |A|I 进行推演。通过左右同乘A得到 AA^T = |A|I。计算该等式两边的迹，并利用tr(AA^T)等于A所有元素平方和的性质，证明|A|大于0，从而非零。",
+        "common_pitfalls": "1. 忽略对A为非零矩阵条件的使用。2. 未能利用求迹这一技巧来连接矩阵等式与标量。3. 直接假设A可逆（这正是需要证明的）进行循环论证。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "19",
+      "question_body": "设随机事件 $A,B$ 满足条件 $P(AB)=P(\\bar{A}B)$，且 $P(A)=p$，则 $P(B)=$ _______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "概率的加法公式：P(A∪B)=P(A)+P(B)-P(AB)",
+        "secondary_knowledge_points": [
+          "概率的基本性质",
+          "对立事件的概率公式：P(Ā)=1-P(A)",
+          "事件的运算法则（如：ĀB = B - AB）"
+        ],
+        "question_type": "概率计算题",
+        "methodology_and_tricks": "利用对立事件将条件 P(AB)=P(ĀB) 进行转化。关键一步是识别出 ĀB = B - AB，并利用概率的有限可加性，将 P(B) 分解为 P(AB) + P(ĀB)，从而利用已知条件快速求解。",
+        "common_pitfalls": "未能正确地将条件 P(AB)=P(ĀB) 与 P(B) 建立联系；错误地认为 AB 和 ĀB 是互斥事件且它们的并集是 B，但忽略了此关系的正确推导过程。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "20",
+      "question_body": "设相互独立的两个随机变量 $X,Y$ 具有同一分布律，且 $X$ 的分布律为\\begin{tabular}{|c|c|c|}\\hline $X$ & $0$ & $1$ \\\\ \\hline $P$ & $\\frac{1}{2}$ & $\\frac{1}{2}$ \\\\ \\hline \\end{tabular}则随机变量 $Z=\\max\\{X,Y\\}$ 的分布律为 _______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "离散型随机变量函数的分布律",
+        "secondary_knowledge_points": [
+          "随机变量的独立性",
+          "最大值函数",
+          "离散型随机变量的分布律"
+        ],
+        "question_type": "离散型随机变量分布律求解题",
+        "methodology_and_tricks": "题眼在于利用随机变量的独立性和所有可能的取值组合来计算最大值。关键技巧是列出随机变量对(X, Y)所有可能的取值组合（共4种），并利用其独立性计算每种组合的概率，再从中找出Z的取值并合并相同值的概率。",
+        "common_pitfalls": "1. 忽略X与Y的独立性，错误计算联合概率。2. 在列出(X, Y)的取值情况时遗漏某些组合。3. 对Z的取值判断错误，例如将Z的取值误认为是{0,1,2}。4. 在合并Z的相同取值对应的概率时出现计算错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "21",
+      "question_body": "已知随机变量$(X,Y)$服从二维正态分布，且$X$和$Y$分别服从正态分布 $N(1,3^2)$ 和 $N(0,4^2)$，$X,Y$ 的相关系数 $\\rho_{XY} = -\\frac{1}{2}$，设 $Z = \\frac{X}{3} + \\frac{Y}{2}$。求 $Z$ 的数学期望 $E(Z)$ 和方差 $D(Z)$;",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "随机变量函数的数学期望与方差 (E(aX+bY) 与 D(aX+bY) 的计算公式)",
+        "secondary_knowledge_points": [
+          "二维正态分布的性质",
+          "协方差与相关系数的定义 (ρ_{XY} = Cov(X,Y) / (√D(X)√D(Y)))",
+          "方差的计算性质 (D(aX+bY) = a²D(X) + b²D(Y) + 2abCov(X,Y))",
+          "数学期望的线性性质 (E(aX+bY) = aE(X) + bE(Y))"
+        ],
+        "question_type": "随机变量的数字特征计算题",
+        "methodology_and_tricks": "题眼在于利用数学期望的线性性质和方差展开式。首先利用线性性质直接计算 E(Z)。计算 D(Z) 的关键是需要通过已知的相关系数和标准差求出协方差 Cov(X,Y) = ρ_{XY} * √D(X) * √D(Y)，然后代入二元随机变量线性组合的方差公式。",
+        "common_pitfalls": "最常见的错误是忽略协方差项，直接计算 D(Z) = (1/3)²D(X) + (1/2)²D(Y)，忘记了公式中 2abCov(X,Y) 这一项。另一个潜在错误是在计算标准差时混淆方差与标准差，例如将 D(X)=3² 误认为是 3。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "22",
+      "question_body": "求 $X$ 与 $Z$ 的相关系数 $\\rho_{XZ}$;",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "相关系数的定义公式：ρ_{XZ} = Cov(X, Z) / (σ_X σ_Z)",
+        "secondary_knowledge_points": [
+          "数学期望的定义与性质",
+          "协方差的计算公式：Cov(X, Z) = E[(X - E[X])(Z - E[Z])]",
+          "随机变量线性变换的期望与方差",
+          "随机变量独立性与协方差的关系"
+        ],
+        "question_type": "概率论与数理统计计算题",
+        "methodology_and_tricks": "题眼在于通过题设中X与Y的关系，并结合Z = X + Y的定义，将Cov(X, Z)和D(Z)表示为关于X和Y的已知量的表达式。关键一步是利用协方差的运算性质，特别是Cov(X, X+Y) = Cov(X, X) + Cov(X, Y) = D(X) + Cov(X, Y)。",
+        "common_pitfalls": "最常见的错误是忽略X与Y的协方差项，直接错误地假设Cov(X, Z) = D(X)。另一个常见错误是计算D(Z)时忘记协方差项，错误地写成D(Z) = D(X) + D(Y)。此外，在代入具体数值时容易出现算术错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "23",
+      "question_body": "问 $X$ 与 $Z$ 是否相互独立？为什么？",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "随机变量相互独立的定义：P(X∈A, Z∈C) = P(X∈A)P(Z∈C) 对所有Borel集A, C成立，或其等价形式F(x,z)=F_X(x)F_Z(z)或f(x,z)=f_X(x)f_Z(z)",
+        "secondary_knowledge_points": [
+          "联合分布与边缘分布的关系",
+          "条件概率的计算",
+          "随机变量函数的分布",
+          "独立性的判定方法"
+        ],
+        "question_type": "随机变量独立性判定题",
+        "methodology_and_tricks": "构建联合分布表并计算边缘分布，然后检验联合分布是否等于边缘分布的乘积；或利用独立性的充要条件进行逻辑判断",
+        "common_pitfalls": "仅凭直觉判断而不进行严格数学验证；混淆独立与不相关的概念；忽略独立性需对任意Borel集成立的要求",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    }
+  ],
+  "summary": {
+    "overview": {
+      "subject_domain": "考研数学一",
+      "total_questions": 21,
+      "overall_difficulty_assessment": "中等。试卷注重基本概念、计算与综合运用，计算量适中，部分题目对技巧和综合分析能力要求较高。"
+    },
+    "module_weight_analysis": [
+      {
+        "module": "极限与连续",
+        "count": 3,
+        "percentage": "14.3%"
+      },
+      {
+        "module": "一元函数微积分学",
+        "count": 3,
+        "percentage": "14.3%"
+      },
+      {
+        "module": "多元函数微分学",
+        "count": 3,
+        "percentage": "14.3%"
+      },
+      {
+        "module": "重积分",
+        "count": 1,
+        "percentage": "4.8%"
+      },
+      {
+        "module": "无穷级数",
+        "count": 3,
+        "percentage": "14.3%"
+      },
+      {
+        "module": "常微分方程",
+        "count": 1,
+        "percentage": "4.8%"
+      },
+      {
+        "module": "线性代数",
+        "count": 4,
+        "percentage": "19.0%"
+      },
+      {
+        "module": "概率论与数理统计",
+        "count": 3,
+        "percentage": "14.3%"
+      }
+    ],
+    "synthesis_and_flexibility_analysis": "试卷具有中等综合性，约有30%的题目涉及跨章节知识的融合。例如，全微分方程题结合了多元微分与常微分方程，旋转体体积题融合了空间解析几何与定积分应用，向量组公共解题要求对方程组理论有整体理解。",
+    "computational_skills_diagnosis": "计算量整体中等。部分题目如参数方程求导、幂级数展开、三角函数积分等需要多步运算和仔细的符号处理。常见计算错误集中在极坐标变换遗漏雅可比因子、二阶导数公式混淆、以及矩阵和概率计算中的代数错误。",
+    "strategic_recommendations": {
+      "focus_areas": [
+        "多元函数微分学的几何应用",
+        "无穷级数的敛散性判别",
+        "线性方程组的解的结构与公共解",
+        "随机变量函数的分布与数字特征"
+      ],
+      "predicted_pitfalls_summary": [
+        "等价无穷小替换在加减运算中的滥用",
+        "极坐标变换遗漏雅可比因子r",
+        "矩阵幂运算错误分配律",
+        "协方差计算忽略相关系数条件"
+      ],
+      "improvement_suggestions": "加强概念辨析，如连续、偏导存在与可微的关系；强化计算规范，尤其在多步符号运算中；提升综合运用能力，通过典型例题训练知识网络的构建与跨章节联想。"
+    }
+  }
+}

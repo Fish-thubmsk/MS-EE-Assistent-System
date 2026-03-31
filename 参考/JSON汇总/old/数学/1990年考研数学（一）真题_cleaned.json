@@ -1,0 +1,464 @@
+{
+  "exam_name": "1990年考研数学（一）真题",
+  "questions": [
+    {
+      "question_number": "1",
+      "question_body": "过点 $M(1,2,-1)$ 且与直线 $\\begin{cases} x=-t+2, \\\\ y=3t-4, \\\\ z=t-1 \\end{cases}$ 垂直的平面方程为\\underline{\\quad} .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "平面的点法式方程",
+        "secondary_knowledge_points": [
+          "空间直线参数方程的方向向量",
+          "两向量垂直的充要条件"
+        ],
+        "question_type": "空间平面方程求解",
+        "methodology_and_tricks": "题眼在于利用待求平面与已知直线垂直这一条件。关键步骤是从直线参数方程中提取其方向向量，该向量即为待求平面的法向量。然后利用平面的点法式方程，代入给定点M的坐标，即可直接写出方程。",
+        "common_pitfalls": "最常见的错误是混淆法向量与方向向量。将直线的方向向量错误地当作平面方程中的系数，而忽略了它正是平面的法向量。另一个易错点是从直线的一般式方程（非题目所给参数式）中提取方向向量时出现计算错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "2",
+      "question_body": "设 $a$ 为非零常数, 则 $\\lim_{x \\to \\infty} \\left(\\frac{x+a}{x-a}\\right)^x = \\underline{\\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "指数函数的极限形式（$1^{\\infty}$型未定式极限）与重要极限$\\lim_{x \\to \\infty} \\left(1 + \\frac{1}{x}\\right)^x = e$",
+        "secondary_knowledge_points": [
+          "$1^{\\infty}$型未定式极限的通用求解方法（配凑法）",
+          "代换法（如令$t = x - a$）",
+          "指数函数的恒等变形（$a^b = e^{b \\ln a}$）"
+        ],
+        "question_type": "极限计算题",
+        "methodology_and_tricks": "识别出极限为$1^{\\infty}$型，通过代数恒等变形将底数部分化为$1 + \\frac{1}{f(x)}$的形式，同时指数部分乘以并除以底数的“增量部分”的倒数，从而配凑出重要极限$\\lim_{x \\to \\infty} (1 + \\frac{1}{x})^x = e$的结构。本题关键是将$\\frac{x+a}{x-a}$改写为$1 + \\frac{2a}{x-a}$。",
+        "common_pitfalls": "最常见的错误是直接将$x \\to \\infty$代入底数得到1，然后计算$1^{\\infty}$，得出结果为1的错误结论。另一种常见错误是在配凑过程中，未能正确处理指数上的系数，导致最终结果错误，例如忽略了指数上应乘以底数增量$\\frac{2a}{x-a}$的倒数$(x-a)/(2a)$，或者计算该倒数与原始指数$x$的乘积时出现代数错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "3",
+      "question_body": "设函数 $f(x) = \\begin{cases} 1, |x| \\le 1 \\\\ 0, |x| > 1 \\end{cases}$, 则函数 $f[f(x)] = \\underline{\\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "分段函数的复合运算",
+        "secondary_knowledge_points": [
+          "函数的定义域与值域",
+          "绝对值不等式的求解"
+        ],
+        "question_type": "分段函数复合运算题",
+        "methodology_and_tricks": "关键在于分析内层函数 f(x) 的值域，并根据其值域（只能是0或1）决定外层函数 f 的取值规则。通过判断 |f(x)| <= 1 是否成立来确定最终结果。",
+        "common_pitfalls": "考生容易直接代入外层函数而忽略内层函数的值域特性，或者错误地认为需要分 |x|>1 和 |x|<=1 两种情况讨论 f[f(x)]。实际上，由于 f(x) 的值域为 {0, 1}，且 |0|<=1 和 |1|<=1 都成立，因此 f[f(x)] 恒等于1。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "4",
+      "question_body": "积分 $\\int_0^2 dx \\int_x^2 e^{-y^2} dy = \\underline{\\quad}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "重积分交换积分次序",
+        "secondary_knowledge_points": [
+          "定积分的计算",
+          "基本积分公式",
+          "常见函数（如指数函数）的积分"
+        ],
+        "question_type": "二重积分计算题",
+        "methodology_and_tricks": "观察原积分顺序（先对y后对x）无法直接计算内层积分∫e^(-y²)dy，因为其原函数不是初等函数。解题关键是交换积分次序，将积分区域视为Y型区域，重新确定积分上下限后再计算。",
+        "common_pitfalls": "交换积分次序后积分上下限确定错误；忽略了积分区域是由直线y=x, y=2, x=0围成的三角形这一关键几何特征。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "5",
+      "question_body": "已知向量组 $\\alpha_1 = (1,2,3,4), \\alpha_2 = (2,3,4,5), \\alpha_3 = (3,4,5,6), \\alpha_4 = (4,5,6,7)$, 则该向量组的秩为 \\underline{\\quad} .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "向量组的秩的定义与计算",
+        "secondary_knowledge_points": [
+          "向量组线性相关性的判定",
+          "矩阵的初等行变换",
+          "阶梯形矩阵的识别"
+        ],
+        "question_type": "向量组的秩计算题",
+        "methodology_and_tricks": "将向量组按行或列构成矩阵，通过初等行变换化为行最简形或阶梯形，非零行的行数即为向量组的秩。关键观察是相邻向量的差均为(1,1,1,1)，暗示极大线性无关组可由前两个（或任意两个相邻）向量构成。",
+        "common_pitfalls": "未将矩阵化简彻底导致误判非零行数；忽略向量间的特殊关系（如本题中的等差数列关系）而采用复杂的计算；误以为向量个数（4个）等于维数（4维）则秩必为4。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "6",
+      "question_body": "设 $f(x)$ 为连续函数, $F(x) = \\int_x^{e^{-x}} f(t)dt$, 则 $F'(x) = ($ ).",
+      "options": {
+        "A": "$-e^{-x}f(e^{-x}) - f(x)$",
+        "B": "$-e^{-x}f(e^{-x}) + f(x)$",
+        "C": "$e^{-x}f(e^{-x}) - f(x)$",
+        "D": "$e^{-x}f(e^{-x}) + f(x)$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "变限积分求导法则 (牛顿-莱布尼茨公式)",
+        "secondary_knowledge_points": [
+          "复合函数求导法则 (链式法则)",
+          "积分上限函数性质",
+          "基本导数公式 (如指数函数求导)"
+        ],
+        "question_type": "变限积分求导计算题",
+        "methodology_and_tricks": "本题的解题关键在于将积分上下限均为变量x的函数的变限积分 $F(x) = \\int_{a(x)}^{b(x)} f(t) dt$ 正确地求导。核心方法是利用公式 $\\frac{d}{dx} \\int_{a(x)}^{b(x)} f(t) dt = f(b(x)) \\cdot b'(x) - f(a(x)) \\cdot a'(x)$。本题中，积分下限为 $a(x) = x$，其导数为 $a'(x) = 1$；积分上限为 $b(x) = e^{-x}$，其导数为 $b'(x) = -e^{-x}$。代入公式时，需特别注意符号：$F'(x) = f(e^{-x}) \\cdot (-e^{-x}) - f(x) \\cdot (1) = -e^{-x}f(e^{-x}) - f(x)$。",
+        "common_pitfalls": "考生最常见的错误集中在以下几个方面：1) 记错或混淆变限积分求导公式的符号，尤其是对积分下限求导部分的符号（应为负号）。2) 在应用链式法则对积分上限 $e^{-x}$ 求导时，遗漏其导数中的负号，错误地认为 $(e^{-x})' = e^{-x}$。3) 未能正确处理积分上下限均为函数的情况，与只有单侧是函数的情况相混淆。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "7",
+      "question_body": "已知 $f(x)$ 具有任意阶连续导数, 且 $f'(x) = [f(x)]^2$, 则当 $n$ 为大于 2 的正整数时, $f(x)$ 的 $n$ 阶导数 $f^{(n)}(x) = ($ ).",
+      "options": {
+        "A": "$n! \\,[f(x)]^{n+1}$",
+        "B": "$n\\,[f(x)]^{n+1}$",
+        "C": "$[f(x)]^{2n}$",
+        "D": "$n!\\,[f(x)]^{2n}$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "高阶导数递推公式与幂函数求导法则",
+        "secondary_knowledge_points": [
+          "函数方程与导数关系",
+          "数学归纳法原理",
+          "复合函数求导链式法则"
+        ],
+        "question_type": "高阶导数求解题",
+        "methodology_and_tricks": "利用已知一阶导数的函数方程 $f'(x) = [f(x)]^2$，通过连续求导建立高阶导数的递推关系。关键是从低阶导数（如二阶、三阶）的计算中观察出 $f^{(n)}(x)$ 与 $[f(x)]^{n+1}$ 的系数规律，并用数学归纳法验证该规律对任意大于2的正整数n成立。",
+        "common_pitfalls": "考生容易在连续求导过程中错误应用链式法则，特别是对 $[f(x)]^2$ 的导数计算；也可能忽略题目中“n为大于2的正整数”的条件，误将n=1或n=2的情形直接推广；此外，可能未能从具体几阶导数的计算中发现系数的阶乘规律，而误选不含阶乘的选项。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "8",
+      "question_body": "设 $\\alpha$ 为常数, 则级数 $\\sum_{n=1}^\\infty \\left(\\frac{\\sin n\\alpha}{n^2} - \\frac{1}{\\sqrt{n}}\\right)$ ( ).",
+      "options": {
+        "A": "绝对收敛",
+        "B": "条件收敛",
+        "C": "发散",
+        "D": "收敛性与 $\\alpha$ 的取值有关"
+      },
+      "analysis": {
+        "primary_knowledge_point": "级数绝对收敛与条件收敛的判别法",
+        "secondary_knowledge_points": [
+          "p-级数敛散性",
+          "比较判别法",
+          "绝对收敛级数的性质",
+          "三角函数的有界性"
+        ],
+        "question_type": "无穷级数敛散性判别",
+        "methodology_and_tricks": "题眼在于将级数拆分为两个独立级数进行分析。第一项 $\\sum \\frac{\\sin n\\alpha}{n^2}$ 因 $|\\sin n\\alpha| \\leq 1$ 而绝对收敛；第二项 $\\sum -\\frac{1}{\\sqrt{n}}$ 是发散的 p-级数（p=1/2<1）。根据级数性质，收敛级数与发散级数之和必发散。",
+        "common_pitfalls": "错误地认为 $\\sin n\\alpha$ 的震荡性可抵消 $\\frac{1}{\\sqrt{n}}$ 的发散性，或未能正确识别第二项为发散的 p-级数。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "9",
+      "question_body": "已知 $f(x)$ 在 $x=0$ 的某邻域内连续, 且 $f(0)=0, \\lim_{x \\to 0} \\frac{f(x)}{1-\\cos x} = 2$, 则在点 $x=0$ 处 $f(x)$ ( ).",
+      "options": {
+        "A": "不可导",
+        "B": "可导, 且 $f'(0) \\ne 0$",
+        "C": "取得极大值",
+        "D": "取得极小值"
+      },
+      "analysis": {
+        "primary_knowledge_point": "极限的定义与计算",
+        "secondary_knowledge_points": [
+          "导数定义",
+          "函数极值的定义",
+          "等价无穷小代换 (1-cosx ~ x²/2)"
+        ],
+        "question_type": "极限与导数综合应用题",
+        "methodology_and_tricks": "题眼在于利用已知极限条件，通过等价无穷小代换（1-cosx ~ x²/2）将极限式改写为与导数定义或函数局部符号相关的形式。关键在于将f(x)表示为x²的高阶无穷小与一个非零常数的乘积，从而判断函数在x=0邻域的符号变化。",
+        "common_pitfalls": "未能正确进行等价无穷小代换；直接将所给极限误认为导数定义进行计算（注意分母是1-cosx，不是x）；混淆了可导性与极值存在的充分条件（例如，认为f'(0)必须存在才能判断极值）。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "10",
+      "question_body": "已知 $\\beta_1, \\beta_2$ 是非齐次线性方程组 $A\\boldsymbol{X} = \\boldsymbol{b}$ 的两个不同解，$\\alpha_1, \\alpha_2$ 是对应的齐次线性方程组 $A\\boldsymbol{X} = \\boldsymbol{0}$ 的基础解系，$k_1, k_2$ 为任意常数，则方程组 $A\\boldsymbol{X} = \\boldsymbol{b}$ 的通解为 $(\\quad)$。",
+      "options": {
+        "A": "$k_1\\boldsymbol{\\alpha}_1 + k_2(\\boldsymbol{\\alpha}_1 + \\boldsymbol{\\alpha}_2) + \\frac{\\boldsymbol{\\beta}_1 - \\boldsymbol{\\beta}_2}{2}$",
+        "B": "$k_1\\boldsymbol{\\alpha}_1 + k_2(\\boldsymbol{\\alpha}_1 - \\boldsymbol{\\alpha}_2) + \\frac{\\boldsymbol{\\beta}_1 + \\boldsymbol{\\beta}_2}{2}$",
+        "C": "$k_1\\boldsymbol{\\alpha}_1 + k_2(\\boldsymbol{\\beta}_1 + \\boldsymbol{\\beta}_2) + \\frac{\\boldsymbol{\\beta}_1 - \\boldsymbol{\\beta}_2}{2}$",
+        "D": "$k_1\\boldsymbol{\\alpha}_1 + k_2(\\boldsymbol{\\beta}_1 - \\boldsymbol{\\beta}_2) + \\frac{\\boldsymbol{\\beta}_1 + \\boldsymbol{\\beta}_2}{2}$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "非齐次线性方程组解的结构",
+        "secondary_knowledge_points": [
+          "齐次线性方程组的基础解系",
+          "非齐次线性方程组的特解",
+          "解的性质：β1 - β2是AX=0的解",
+          "解的性质：(β1 + β2)/2是AX=b的特解"
+        ],
+        "question_type": "线性方程组解的结构选择题",
+        "methodology_and_tricks": "验证通解的两个核心条件：1）k1,k2对应的部分（线性组合）必须是AX=0的基础解系（线性无关且个数等于n-r(A)）；2）常数部分必须是AX=b的一个特解",
+        "common_pitfalls": "混淆β1-β2与β1+β2在齐次方程组与非齐次方程组解中的作用；错误地将β1, β2本身作为基础解系的组成部分；未能验证给出的两个向量是否线性无关",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "11",
+      "question_body": "求 $\\int_0^1 \\frac{\\ln(1+x)}{(2-x)^2}dx$。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "定积分的分部积分法",
+        "secondary_knowledge_points": [
+          "有理函数积分",
+          "对数函数的积分性质",
+          "定积分的换元法"
+        ],
+        "question_type": "定积分计算题",
+        "methodology_and_tricks": "题眼在于将被积函数中的分式1/(2-x)^2视为分部积分中‘易积分’的部分进行求导，而对数函数ln(1+x)进行求导后形式会简化。通过分部积分将原积分转化为对1/((2-x)(1+x))的积分，再通过裂项法求解。",
+        "common_pitfalls": "1. 分部积分后，对得到的积分∫1/((2-x)(1+x))dx进行裂项时，系数计算错误。2. 忽略定积分的上下限，在换元或计算过程中未保持上下限同步变换，或代入上下限时出错。3. 对含有绝对值符号的对数函数进行积分时，在区间[0,1]上未能正确判断其符号并去掉绝对值。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "12",
+      "question_body": "设 $z = f(2x - y, y\\sin x)$，其中 $f(u,v)$ 具有二阶连续偏导数，求 $\\frac{\\partial^2 z}{\\partial x\\partial y}$。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "多元复合函数求导法则（链式法则）",
+        "secondary_knowledge_points": [
+          "二阶混合偏导数的计算",
+          "偏导数的四则运算法则",
+          "符号函数求导"
+        ],
+        "question_type": "多元函数微分计算题",
+        "methodology_and_tricks": "引入中间变量 u = 2x - y, v = y sin x 以简化链式法则的表达。关键在于清晰地计算一阶偏导数 ∂z/∂x 和 ∂z/∂y，特别注意在对其中一个一阶偏导（如 ∂z/∂x）求关于另一个变量（y）的偏导时，需要再次应用链式法则，并正确处理乘积项 y sin x 的求导。",
+        "common_pitfalls": "1. 在求二阶混合偏导时，遗漏对中间变量偏导数的再次求导（即漏掉链式法则的再次应用）。2. 未能正确识别并处理 f 对第一个中间变量和第二个中间变量的偏导数（如 f'1, f'2）在后续求导中自身也是复合函数这一事实。3. 对乘积项 y sin x 求偏导时出现错误。4. 混淆一阶偏导数的符号表示，导致后续计算混乱。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "13",
+      "question_body": "求微分方程 $y''+4y'+4y = e^{-2x}$ 的通解。",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "二阶常系数非齐次线性微分方程的求解",
+        "secondary_knowledge_points": [
+          "特征方程法",
+          "齐次线性微分方程的通解结构",
+          "非齐次微分方程特解的形式设定（待定系数法）",
+          "二阶常系数线性微分方程解的结构定理"
+        ],
+        "question_type": "微分方程求解题",
+        "methodology_and_tricks": "首先求解对应的齐次方程 $y''+4y'+4y=0$ 的通解。其特征方程为 $r^2+4r+4=0$，有重根 $r_1=r_2=-2$，故齐次通解为 $Y=(C_1+C_2x)e^{-2x}$。由于非齐次项 $f(x)=e^{-2x}$ 中的指数系数 $-2$ 正好是齐次方程的二重特征根，因此特解形式应设为 $y^*=A x^2 e^{-2x}$（乘以 $x^2$ 以确保与齐次通解线性无关），然后代入原方程确定常数 $A$。",
+        "common_pitfalls": "在设定特解形式时，未能正确处理特征根与指数系数的关系。当非齐次项的指数系数是特征方程的单根时，特解应设为 $x$ 倍的对应形式；当是重根时，应设为 $x^k$ 倍的对应形式（$k$ 为根的重数，本题中 $k=2$）。考生常犯的错误是仍按单根处理，设为 $Axe^{-2x}$，导致无法求出正确特解。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "14",
+      "question_body": "设不恒为常数的函数 $f(x)$ 在闭区间 $[a,b]$ 上连续，在开区间 $(a,b)$ 内可导，且 $f(a) = f(b)$, 证明: 在 $(a,b)$ 内至少存在一点 $\\xi$, 使得 $f'(\\xi) > 0$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "罗尔(Rolle)定理",
+        "secondary_knowledge_points": [
+          "连续函数在闭区间上的性质",
+          "导数的定义与几何意义",
+          "反证法"
+        ],
+        "question_type": "中值定理证明题",
+        "methodology_and_tricks": "题眼在于利用函数不恒为常数且端点值相等的条件。证明的核心思路是构造一个辅助函数或利用反证法。由于f(x)在[a,b]上连续且不恒为常数，但f(a)=f(b)，则必然存在某个点c∈(a,b)，使得f(c)≠f(a)。然后考虑区间[a,c]或[c,b]上的拉格朗日中值定理。",
+        "common_pitfalls": "1. 忽略‘不恒为常数’这一关键条件，导致无法证明f'(ξ)严格大于0。2. 错误地直接对[a,b]区间应用罗尔定理，只能得到f'(ξ)=0的结论，与目标结论f'(ξ)>0不符。3. 构造辅助函数或选择子区间不当，使得证明逻辑不严谨。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "15",
+      "question_body": "设 4 阶矩阵 $B = \\begin{pmatrix} 1 & -1 & 0 & 0 \\\\ 0 & 1 & -1 & 0 \\\\ 0 & 0 & 1 & -1 \\\\ 0 & 0 & 0 & 1 \\end{pmatrix}$, $C = \\begin{pmatrix} 2 & 1 & 3 & 4 \\\\ 0 & 2 & 1 & 3 \\\\ 0 & 0 & 2 & 1 \\\\ 0 & 0 & 0 & 2 \\end{pmatrix}$, 且矩阵 $A$ 满足关系式 $A(E - C^{-1}B)^{\\text{T}}C^{\\text{T}} = E$, 其中 $E$ 为 4 阶单位矩阵, $C^{-1}$ 表示 $C$ 的逆矩阵, $C^{\\text{T}}$ 表示 $C$ 的转置矩阵. 将上述关系式化简并求矩阵 $A$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "矩阵方程求解（通过矩阵运算性质化简方程）",
+        "secondary_knowledge_points": [
+          "矩阵转置的性质",
+          "矩阵逆的性质",
+          "初等矩阵与矩阵的初等变换",
+          "分块矩阵或特殊矩阵的求逆"
+        ],
+        "question_type": "矩阵方程求解题",
+        "methodology_and_tricks": "题眼在于利用矩阵转置和逆的运算性质 $(XY)^T = Y^T X^T$ 和 $(C^{-1})^T = (C^T)^{-1}$ 将原方程 $A(E - C^{-1}B)^{T}C^{T} = E$ 化简为 $A [C (E - B^T (C^T)^{-1})]^T = E$，进而得到 $A = [(C - B^T) ^T]^{-1}$。关键在于识别并灵活运用这些运算律将方程变形为标准形式 $AX = E$ 从而 $A = X^{-1}$。",
+        "common_pitfalls": "1. 错误地处理矩阵转置和逆的混合运算顺序，例如误认为 $(C^{-1}B)^T = (C^{-1})^T B^T$ 时忘记调整顺序为 $B^T (C^{-1})^T$ 或错误处理 $(E - C^{-1}B)^T$。2. 在化简后未能准确求出矩阵 $C - B^T$ 的逆矩阵，特别是对于这类具有特定结构（如上三角或接近对角形）的矩阵，可能忽略了其逆矩阵的特殊求法（如利用初等变换或分块求逆）而导致计算复杂或出错。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "16",
+      "question_body": "求一个正交变换, 化二次型 $f(x_1, x_2, x_3) = x_1^2 + 4x_2^2 + 4x_3^2 - 4x_1x_2 + 4x_1x_3 - 8x_2x_3$ 为标准形.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "实对称矩阵的正交相似对角化",
+        "secondary_knowledge_points": [
+          "二次型的矩阵表示",
+          "特征值与特征向量的计算",
+          "施密特正交化方法"
+        ],
+        "question_type": "二次型的标准化问题",
+        "methodology_and_tricks": "题眼在于准确写出二次型对应的实对称矩阵A，并求其特征值和正交的特征向量。正交变换的标准形由特征值决定。计算特征值时，可通过观察矩阵特点（如行和相等）或利用因式分解来简化计算。",
+        "common_pitfalls": "1. 将二次型写成对称矩阵时，非平方项系数分配错误（应为交叉项系数的一半）。2. 计算特征值时行列式展开错误或求解特征方程因式分解困难。3. 对重根特征值，求出的特征向量未正交化或单位化。4. 忽略正交变换要求变换矩阵为正交矩阵（列向量为单位正交向量组）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "17",
+      "question_body": "质点 $P$ 沿着以 $AB$ 为直径的半圆周, 从点 $A(1,2)$ 运动到点 $B(3,4)$ 的过程中受到力 $\\boldsymbol{F}$ 的作用 (如图), $\\boldsymbol{F}$ 的大小等于点 $P$ 到原点 $O$ 之间的距离, 其方向垂直于线段 $OP$, 且与 $y$ 轴正向的夹角小于 $\\frac{\\pi}{2}$, 求变力 $\\boldsymbol{F}$ 对质点 $P$ 所做的功.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "变力沿曲线做功的计算公式：功 W = ∫_C F · dr",
+        "secondary_knowledge_points": [
+          "向量场与曲线积分的物理意义",
+          "圆的参数方程",
+          "力与位移方向的矢量点积运算",
+          "垂直于向量OP的力的方向确定",
+          "力的分解与合成"
+        ],
+        "question_type": "变力作功计算题",
+        "methodology_and_tricks": "关键是利用力F的方向特性——垂直于OP。将力F表示为旋转90度的位置向量，即F ∝ k × OP（k为z轴单位向量）。通过参数化半圆路径，将曲线积分转化为定积分计算。",
+        "common_pitfalls": "1) 对'方向垂直于OP，与y轴正向夹角小于π/2'理解错误，导致力方向判断失误 2) 参数化路径时端点对应错误 3) 力的矢量表达式构建不准确 4) 曲线积分计算时未正确代入参数方程",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "18",
+      "question_body": "已知随机变量 $X$ 的概率密度函数为 $f(x)=\\frac{1}{2} e^{-|x|}, \\quad-\\infty<x<+\\infty$, 则随机变量 $X$ 的概率分布函数为 $F(x)=$ _______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "概率分布函数（累积分布函数）的定义与计算",
+        "secondary_knowledge_points": [
+          "概率密度函数的性质（归一性）",
+          "含绝对值的指数函数积分",
+          "分段函数的处理"
+        ],
+        "question_type": "概率分布函数计算题",
+        "methodology_and_tricks": "根据概率分布函数的定义 F(x) = P(X ≤ x) = ∫_{-∞}^{x} f(t) dt，并需要根据自变量 x 在定义域内的不同位置进行分段积分计算。绝对值项 |x| 的出现是关键，它意味着概率密度函数在 x=0 处的对称性，因此需要分 x<0 和 x≥0 两种情况讨论。",
+        "common_pitfalls": "1. 忘记概率分布函数需要进行分段讨论，尤其是在被积函数包含绝对值时。2. 在积分计算中，对含有绝对值的指数函数处理不当，导致符号错误或积分上下限混淆。3. 忽略验证分布函数的性质，例如当 x→-∞ 时 F(x) 应趋于 0，当 x→+∞ 时 F(x) 应趋于 1，以及 F(x) 的右连续性。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "19",
+      "question_body": "设随机事件 $A, B$ 及其和事件 $A \\cup B$ 的概率分别为 $0.4,0.3$ 和 $0.6$, 设 $\\bar{B}$ 为事件 $B$ 的对立事件, 则 $P(A \\bar{B})=$ _______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "概率的加法公式: P(A ∪ B) = P(A) + P(B) - P(AB)",
+        "secondary_knowledge_points": [
+          "对立事件概率性质: P(\\bar{B}) = 1 - P(B)",
+          "事件差的概率: P(A\\bar{B}) = P(A) - P(AB)"
+        ],
+        "question_type": "概率计算题",
+        "methodology_and_tricks": "利用加法公式先求出P(AB)，再利用关系式P(A\\bar{B}) = P(A) - P(AB)计算最终结果。",
+        "common_pitfalls": "将P(A\\bar{B})错误理解为P(A)P(\\bar{B})（仅在A、B独立时成立），或未能正确运用加法公式反解P(AB)。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "20",
+      "question_body": "已知离散型随机变量 $X$ 服从参数为 $2$ 的泊松分布, 即 $P\\{X=k\\}=\\frac{2^{k}}{k !} e^{-2}(k=0,1,2, \\cdots)$, 则随机变量 $Z=3 X-2$ 的数学期望 $E(Z)=$ _______.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "数学期望的线性性质：E(aX + b) = aE(X) + b",
+        "secondary_knowledge_points": [
+          "泊松分布的数学期望 E(X)=λ",
+          "离散型随机变量数学期望的定义"
+        ],
+        "question_type": "随机变量函数的数学期望计算题",
+        "methodology_and_tricks": "利用数学期望的线性性质，避免了直接根据Z的分布律求期望的复杂计算。题眼是识别出Z是X的线性函数，并已知X服从泊松分布，其期望E(X)=λ=2。",
+        "common_pitfalls": "错误地尝试先求出随机变量Z的分布律，再根据定义E(Z)=∑ z_k P(Z=z_k)进行计算，这样会非常繁琐且容易出错。忽略线性性质中的常数项处理，例如忘记公式中的常数b或符号错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "21",
+      "question_body": "设二维随机变量 $(X, Y)$ 在区域 $D=\\{(x, y) \\mid 0<x<1, |y|<x\\}$ 内服从均匀分布, 求关于 $X$ 的边缘概率密度及随机变量 $Z=2 X+1$ 的方差 $D(Z)$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "连续性二维随机变量边缘概率密度函数的计算",
+        "secondary_knowledge_points": [
+          "均匀分布的定义与性质",
+          "区域面积的计算",
+          "随机变量函数的方差 (D(Z) = D(2X+1) = 4D(X))",
+          "计算随机变量X的方差 (D(X) = E(X^2) - [E(X)]^2)",
+          "通过边缘概率密度函数计算期望与方差"
+        ],
+        "question_type": "二维均匀分布的概率密度与数字特征计算题",
+        "methodology_and_tricks": "先根据区域D的面积求出二维联合概率密度函数，再通过对Y积分得到关于X的边缘概率密度函数。求方差D(Z)的关键是转化为求D(X)，利用方差性质D(aX+b)=a²D(X)。计算D(X)需要先通过边缘概率密度求出E(X)和E(X²)。",
+        "common_pitfalls": "1. 在确定区域D的边界时忽略|y|<x意味着y的取值范围是(-x, x)，导致积分上下限错误。2. 计算区域D的面积时积分出错。3. 在对Y积分求边缘密度时，忽略X本身有取值范围(0,1)，导致边缘密度函数表达式不完整。4. 误以为D(Z)=D(2X+1)=D(2X)+D(1)，而未正确使用方差的性质公式。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    }
+  ],
+  "summary": {
+    "overview": {
+      "subject_domain": "考研数学一",
+      "total_questions": 16,
+      "overall_difficulty_assessment": "中等偏基础，注重核心概念和基础计算的考查"
+    },
+    "module_weight_analysis": [
+      {
+        "module": "微分学（含一元函数微积分）",
+        "count": 4,
+        "percentage": "25%"
+      },
+      {
+        "module": "积分学（含定积分、二重积分）",
+        "count": 3,
+        "percentage": "18.75%"
+      },
+      {
+        "module": "线性代数",
+        "count": 4,
+        "percentage": "25%"
+      },
+      {
+        "module": "概率论与数理统计",
+        "count": 3,
+        "percentage": "18.75%"
+      },
+      {
+        "module": "空间解析几何与微分方程",
+        "count": 2,
+        "percentage": "12.5%"
+      }
+    ],
+    "synthesis_and_flexibility_analysis": "试卷综合性要求中等，多数题目聚焦于单一核心知识点，少数题目（如变限积分求导、复合函数偏导、矩阵方程求解）融合了多个知识点的运用。",
+    "computational_skills_diagnosis": "试卷整体计算量中等偏低。多数题目计算直接，但对计算过程的规范性（如分部积分、裂项技巧、参数方程代入、矩阵求逆）要求较高，尤其需警惕在涉及链式法则的复合函数求导、非齐次微分方程特解设定（需根据特征根情况乘以x的适当幂次）以及积分上下限的变换时出现疏漏。",
+    "strategic_recommendations": {
+      "focus_areas": [
+        "变限积分求导公式及其应用场景",
+        "非齐次线性方程组解的结构理论与通解形式",
+        "二阶常系数线性微分方程（特别是特征根为重根或与激励函数形式重合时）的特解设定方法",
+        "二维随机变量（均匀分布）的边缘概率密度求解与数字特征计算"
+      ],
+      "predicted_pitfalls_summary": [
+        "混淆法向量与方向向量，特别是在空间几何题中",
+        "处理$1^{\\infty}$型极限时，直接代入底数等于1得出错误结论",
+        "高阶导数递推或链式法则求偏导时，遗漏中间变量自身的导数",
+        "设定微分方程特解形式时，未能根据特征根与激励函数指数系数的关系（单根或重根）乘以x的适当幂次",
+        "矩阵运算中，混淆转置与逆的运算顺序，如错误处理$(XY)^T$或$(C^{-1})^T$"
+      ],
+      "improvement_suggestions": "强化对核心公式和定理（如变限积分求导、线性方程组解的结构、微分方程特解设定规则、矩阵运算律）的准确理解和记忆，并通过练习巩固在复杂运算（如多次链式求导、积分变换）中保持步骤清晰和严谨的习惯。"
+    }
+  }
+}

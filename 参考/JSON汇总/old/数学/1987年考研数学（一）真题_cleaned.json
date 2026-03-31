@@ -1,0 +1,462 @@
+{
+  "exam_name": "1987年考研数学（一）真题",
+  "questions": [
+    {
+      "question_number": "1",
+      "question_body": "与两直线 $\\begin{cases} x=1, \\\\ y=-1+t, \\\\ z=2+t \\end{cases}$, 及 $\\frac{x+1}{1}=\\frac{y+2}{2}=\\frac{z-1}{1}$ 都平行, 且过原点的平面方程为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "平面的点法式方程：已知平面上一点和平面的法向量，可确定平面方程。",
+        "secondary_knowledge_points": [
+          "空间直线方程的参数式与对称式",
+          "向量的叉积运算",
+          "平面法向量的几何意义：与平面内所有向量垂直"
+        ],
+        "question_type": "空间平面方程求解题",
+        "methodology_and_tricks": "题眼在于所求平面的法向量必须与两条给定直线的方向向量都垂直。因此，将两条直线的方向向量作叉积，即可得到所求平面的法向量。再利用平面过原点这一条件，直接写出点法式方程。",
+        "common_pitfalls": "最常见的错误是混淆了“平行”与“垂直”的关系。题目要求平面与两条直线都“平行”，这意味着直线的方向向量必须“位于”所求平面内，因此平面的法向量应与这两个方向向量都“垂直”。考生容易误以为平面的法向量需要与直线方向向量平行。另一个常见错误是在进行向量叉积运算时出现符号或计算错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "2",
+      "question_body": "当 $x=$ \\_\\_\\_\\_\\_\\_ 时, 函数 $y=x2^x$ 取得极小值.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "函数极值的必要条件（费马引理）：若函数在一点取得极值且在该点可导，则其导数必为零。",
+        "secondary_knowledge_points": [
+          "导数的四则运算法则",
+          "指数函数的导数",
+          "利用一阶导数符号判断函数单调性及极值",
+          "解超越方程"
+        ],
+        "question_type": "函数极值求解题",
+        "methodology_and_tricks": "本题的题眼是首先利用导数求驻点。对函数 y = x * 2^x 求导，利用乘积法则得到 y' = 2^x + x * 2^x ln2 = 2^x (1 + x ln2)。令 y' = 0，由于 2^x > 0 恒成立，关键步骤是解方程 1 + x ln2 = 0，得到唯一驻点 x = -1/ln2。再通过分析导数在驻点两侧的符号变化（左负右正）来确认该点是极小值点。",
+        "common_pitfalls": "1. 求导错误，特别是对指数函数 2^x 的导数计算错误，误以为其导数是 x*2^(x-1)。2. 解方程 2^x (1 + x ln2) = 0 时，忽略 2^x 恒为正这一事实，错误地令 2^x = 0 而找不到解或得到错误解。3. 求出驻点后，忘记或错误地进行极值判定（例如仅凭二阶导数符号，而此处用一阶导数符号判单调性更直接可靠）。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "3",
+      "question_body": "由曲线 $y=\\ln x$ 与两直线 $y=(e+1)-x$ 及 $y=0$ 所围成的平面图形的面积为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "定积分的几何应用（平面图形的面积）",
+        "secondary_knowledge_points": [
+          "平面曲线的交点求解",
+          "定积分的计算",
+          "对数函数的性质"
+        ],
+        "question_type": "定积分应用题（面积计算）",
+        "methodology_and_tricks": "题眼在于正确识别所围成的图形并确定积分的上下限和积分表达式。此图形是一个曲边三角形，需要用y作为积分变量（或被积函数为“右减左”的x之差）来简化计算。具体步骤为：1) 求三条线两两之间的交点坐标；2) 选择合适的积分变量（此题以y为积分变量更简便，积分区间为[0,1]）；3) 写出面积A = ∫(从0到1)[(e+1-y) - e^y] dy。",
+        "common_pitfalls": "最常见的错误是仍以x为积分变量，导致需要将图形分割成两部分分别积分，计算复杂且易出错。另一个潜在错误是交点求解错误，或积分上下限设定错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "4",
+      "question_body": "设 $L$ 为取正向的圆 $x^2+y^2=9$, 则曲线积分 $\\oint_L (2xy-2y)dx + (x^2-4x)dy$ 的值为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "格林公式：\\oint_{L} P dx + Q dy = \\iint_{D} \\left(\\frac{\\partial Q}{\\partial x} - \\frac{\\partial P}{\\partial y}\\right) dxdy",
+        "secondary_knowledge_points": [
+          "二元函数偏导数的计算",
+          "利用曲线积分计算平面图形的面积",
+          "曲线积分与路径无关的判定条件"
+        ],
+        "question_type": "曲线积分计算题",
+        "methodology_and_tricks": "判断被积表达式是否为某函数的全微分，即验证\\frac{\\partial Q}{\\partial x} = \\frac{\\partial P}{\\partial y}。若成立，则积分在单连通区域内与路径无关，可直接利用格林公式计算。本题的关键是识别出该积分满足路径无关的条件，且被积函数结构简单，可直接应用公式。",
+        "common_pitfalls": "未验证格林公式的条件（如区域是否单连通、函数是否具有一阶连续偏导数）而直接应用；计算偏导数时出现符号错误；忽视曲线的方向（正向为逆时针）导致结果符号错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "5",
+      "question_body": "已知 3 维线性空间的一组基为 $\\alpha_1=(1,1,0), \\alpha_2=(1,0,1),\\alpha_3=(0,1,1)$, 则向量 $\\alpha=(2,0,0)$ 在上述基底下的坐标为\\_\\_\\_\\_\\_\\_.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "向量在给定基下的坐标定义",
+        "secondary_knowledge_points": [
+          "线性方程组求解",
+          "矩阵求逆",
+          "基变换与坐标变换"
+        ],
+        "question_type": "基与坐标计算题",
+        "methodology_and_tricks": "设向量α在基α1, α2, α3下的坐标为(x, y, z)，根据坐标定义建立方程：xα1 + yα2 + zα3 = α，即求解线性方程组。关键在于将向量方程准确转化为线性方程组并求解。",
+        "common_pitfalls": "混淆坐标的排列顺序与基向量的顺序；未能正确建立或求解线性方程组；误将向量在自然基下的坐标当作在给定基下的坐标。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "6",
+      "question_body": "求正常数 $a$ 与 $b$, 使得 $\\lim_{x\\to 0} \\frac{1}{bx - \\sin x} \\int_0^x \\frac{t^2}{\\sqrt{a+t^2}} dt = 1$ 成立.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "极限的四则运算法则与等价无穷小替换",
+        "secondary_knowledge_points": [
+          "洛必达法则",
+          "积分上限函数求导",
+          "泰勒展开"
+        ],
+        "question_type": "极限计算题",
+        "methodology_and_tricks": "题眼是判断分母和积分在x趋近于0时的阶数。由于极限结果为非零常数1，分母与积分必须是同阶无穷小。首先利用等价无穷小对被积函数进行简化，然后计算积分的等价无穷小项，最后通过比较分母与分子的阶数来确定常数a和b的值。",
+        "common_pitfalls": "最常见的错误是忽略‘极限为非零常数’这一条件所隐含的‘同阶无穷小’关系，直接使用洛必达法则，导致计算复杂且容易出错。另一个潜在错误是在使用等价无穷小替换时，对被积函数中分母的处理不准确，例如错误地认为√(a+t²)在t→0时等价于√a。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "7",
+      "question_body": "(本题满分 3 分) 设函数 $f,g$ 连续可微, $u=f(x,xy), v=g(x+xy)$, 求 $\\frac{\\partial u}{\\partial x} \\cdot \\frac{\\partial v}{\\partial x}$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "多元复合函数链式求导法则",
+        "secondary_knowledge_points": [
+          "偏导数的定义",
+          "函数连续性"
+        ],
+        "question_type": "多元函数微分计算题",
+        "methodology_and_tricks": "关键在于正确识别内层函数结构并应用链式法则。对于u，内层函数是(x, xy)，需对两个中间变量分别求偏导再求和；对于v，内层函数是(x+xy)，作为一个整体求导。",
+        "common_pitfalls": "混淆∂v/∂x与g'的关系，误认为∂v/∂x = g'(x+xy)而忽略乘以(1+y)；在求∂u/∂x时遗漏对第一个中间变量x求偏导的项f₁'。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "8",
+      "question_body": "(本题满分 4 分) 设矩阵 $A$ 与 $B$ 满足 $AB=A+2B$, 其中 $A = \\begin{pmatrix} 3 & 0 & 1 \\\\ 1 & 1 & 0 \\\\ 0 & 1 & 4 \\end{pmatrix}$, 求矩阵 $B$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "利用矩阵方程求解未知矩阵",
+        "secondary_knowledge_points": [
+          "矩阵的代数运算律",
+          "矩阵求逆",
+          "单位矩阵的性质"
+        ],
+        "question_type": "矩阵方程求解题",
+        "methodology_and_tricks": "将给定的矩阵方程 AB = A + 2B 重组为标准形式 (A - 2I)X = C。通过移项得到 AB - 2B = A，然后提取公因式 B(A - 2I) = A（注意：矩阵乘法不满足交换律，此提取是错误的，应提取为 (A - 2I)B = A）。正确的关键是先将方程改写为 AB - 2B = A，然后从右侧提取公因式 B，得到 (A - 2I)B = A。之后通过求矩阵 (A - 2I) 的逆来解出 B = (A - 2I)^-1 A。",
+        "common_pitfalls": "1. 在提取公因式时忽视矩阵乘法的不可交换性，错误地写成 B(A - 2I) = A。必须确保矩阵乘法的顺序正确。2. 计算矩阵 (A - 2I) 的逆时出现算术错误。3. 最后进行矩阵乘法 (A - 2I)^-1 A 时运算失误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "9",
+      "question_body": "求微分方程 $y''' + 6y'' + (9+a^2)y' = 1$ 的通解, 其中常数 $a > 0$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "高阶线性常系数非齐次微分方程的解法",
+        "secondary_knowledge_points": [
+          "特征方程法求解齐次通解",
+          "待定系数法求解非齐次特解",
+          "共轭复根的求解与处理",
+          "多项式乘积与线性无关解"
+        ],
+        "question_type": "微分方程求解题",
+        "methodology_and_tricks": "题眼在于正确写出特征方程 r(r^2 + 6r + (9+a^2)) = 0，并根据a>0的条件判断出三重根或一实根一对共轭复根的情况，从而构造出线性无关的齐次解。对于非齐次项为常数1，可直接设特解为y_p = kx (因为r=0是特征根)。",
+        "common_pitfalls": "最易犯的错误是未能正确处理特征根r=0的重数，以及当a=0时特征方程有重根的情况被忽略。考生可能错误地将特解设为常数k，而忽略了r=0是特征根的事实，导致特解形式错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "10",
+      "question_body": "设常数 $k > 0$, 则级数 $\\sum_{n=1}^\\infty (-1)^n \\frac{k+n}{n^2}$ ( ).",
+      "options": {
+        "A": "发散",
+        "B": "绝对收敛",
+        "C": "条件收敛",
+        "D": "收敛或发散与 $k$ 的取值有关"
+      },
+      "analysis": {
+        "primary_knowledge_point": "交错级数判别法（莱布尼兹判别法）与绝对收敛性的比值/比较判别法",
+        "secondary_knowledge_points": [
+          "极限审敛法",
+          "p-级数的敛散性",
+          "绝对收敛与条件收敛的定义",
+          "序列极限的计算"
+        ],
+        "question_type": "无穷级数敛散性判别",
+        "methodology_and_tricks": "题眼在于分别判断级数是否绝对收敛（考虑通项的绝对值级数 $\\sum \\frac{k+n}{n^2}$）以及作为交错级数是否收敛。对于绝对值级数，通过极限审敛法与调和级数比较，可判定其为发散。再验证交错级数满足莱布尼兹判别法的两个条件，从而判定原级数条件收敛。",
+        "common_pitfalls": "1. 错误地直接对交错级数通项的绝对值使用比值或根值判别法得出极限为0而误判为绝对收敛，忽视了与发散级数比较的本质。2. 未能清晰地分开判断绝对收敛性和条件收敛性两个步骤。3. 在验证莱布尼兹判别法条件时，未能严格证明通项绝对值序列单调递减（可通过导数或作差法证明 $a_n = \\frac{k+n}{n^2}$ 当n足够大时单调递减）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "11",
+      "question_body": "设 $I = t\\int_0^s f(tx)\\, dx$, 其中 $f(x)$ 为连续数, $s > 0, t > 0$, 则 $I$ 的值( ).",
+      "options": {
+        "A": "依赖于 $s,t$",
+        "B": "依赖于 $s,t,x$",
+        "C": "依赖于 $t,x$, 不依赖于 $s$",
+        "D": "依赖于 $s$, 不依赖于 $t$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "定积分的变量替换（凑微分法）",
+        "secondary_knowledge_points": [
+          "定积分的基本性质",
+          "定积分的换元法",
+          "复合函数求导",
+          "变量替换后积分上下限的确定"
+        ],
+        "question_type": "定积分变量替换与依赖关系分析",
+        "methodology_and_tricks": "通过变量替换 tx = u，将原积分化为 (1/t)∫(0 to st) f(u) du，此步骤为解题关键。观察替换后的积分表达式，可以发现 s 和 t 以乘积 st 的形式共同出现在积分上限中，而整个积分值 I = t * (1/t) * ∫(0 to st) f(u) du = ∫(0 to st) f(u) du。因此 I 的值仅依赖于 s 和 t 的乘积 st，而不单独依赖于 s 或 t。",
+        "common_pitfalls": "最常见的错误是变量替换后忘记调整积分上下限，或者错误地认为 I 依赖于 s 和 t 的某个特定组合而选择了不完整的描述。另一个易错点是没有注意到题中 x 是积分变量，在积分完成后已经消失，因此 I 不可能依赖于 x。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "12",
+      "question_body": "设 $\\lim_{x \\to a} \\frac{f(x) - f(a)}{(x - a)^2} = -1$, 则在点 $x = a$ 处( ).",
+      "options": {
+        "A": "$f(x)$ 可导且 $f'(a) \\ne 0$",
+        "B": "$f(x)$ 取得极大值",
+        "C": "$f(x)$ 取得极小值",
+        "D": "$f(x)$ 的导数不存在"
+      },
+      "analysis": {
+        "primary_knowledge_point": "极值的第二充分条件（利用二阶导数判别极值）",
+        "secondary_knowledge_points": [
+          "函数极限的定义与性质",
+          "导数定义（极限形式）",
+          "极限的局部保号性",
+          "函数极值的定义"
+        ],
+        "question_type": "极限与极值概念判断题",
+        "methodology_and_tricks": "题眼在于将所给极限 $\\lim_{x \\to a} \\frac{f(x) - f(a)}{(x - a)^2} = -1$ 与导数定义 $f'(a) = \\lim_{x \\to a} \\frac{f(x) - f(a)}{x - a}$ 进行关联分析。关键在于利用极限存在且非零这一条件，推断出一阶导数的存在性及其值为0，并利用局部保号性判断函数在 $x=a$ 邻域内与 $f(a)$ 的大小关系，从而确定极值。",
+        "common_pitfalls": "1. 误判导数存在性：忽略极限 $\\lim_{x \\to a} \\frac{f(x) - f(a)}{(x - a)^2}$ 存在意味着分子必须是 $(x-a)^2$ 的高阶无穷小，从而错误选择D。2. 极值判别错误：未能正确运用极限的局部保号性来分析 $f(x)-f(a)$ 在 $x=a$ 邻域内的符号变化，导致在B和C选项之间选择错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "13",
+      "question_body": "设 $\\mathbf{A}$ 为 $n$ 阶矩阵, 且 $|\\mathbf{A}| = a \\ne 0$, $\\mathbf{A}^*$ 是 $\\mathbf{A}$ 的伴随矩阵, 则 $|\\mathbf{A}^*| = ($ ).",
+      "options": {
+        "A": "$a$",
+        "B": "$\\frac{1}{a}$",
+        "C": "$a^{n-1}$",
+        "D": "$a^n$"
+      },
+      "analysis": {
+        "primary_knowledge_point": "伴随矩阵的性质：AA* = A*A = |A|E",
+        "secondary_knowledge_points": [
+          "矩阵的行列式性质：|kA| = k^n |A|",
+          "矩阵的行列式乘法公式：|AB| = |A||B|",
+          "单位矩阵的行列式：|E| = 1"
+        ],
+        "question_type": "矩阵行列式计算题",
+        "methodology_and_tricks": "利用伴随矩阵的基本恒等式 AA* = |A|E，两边同时取行列式，并运用矩阵行列式的运算法则进行求解。",
+        "common_pitfalls": "混淆伴随矩阵的行列式 |A*| 与逆矩阵的行列式 |A^{-1}| 的公式，错误地认为 |A*| = 1/|A|；或者忽略了取行列式后产生的次数关系，错误地得出 |A||A*| = a 而非 a^n。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": true
+    },
+    {
+      "question_number": "14",
+      "question_body": "求幂级数 $\\sum_{n=1}^\\infty \\frac{1}{n2^n}x^{n-1}$ 的收敛域, 并求其和函数.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "幂级数的收敛半径与收敛域的求法（根值判别法或比值判别法）",
+        "secondary_knowledge_points": [
+          "和函数的求解方法（逐项积分或逐项求导）",
+          "几何级数的和函数公式",
+          "阿贝尔定理"
+        ],
+        "question_type": "幂级数收敛域与和函数求解题",
+        "methodology_and_tricks": "题眼在于通过变量代换将原级数化为标准形式。将幂级数中的 x^(n-1) 项通过下标变换处理，或直接对整个级数乘以 x 再除以 x（x≠0）来进行分析。关键步骤是利用比值判别法求收敛半径，并单独讨论端点处的敛散性。求和函数时，常通过逐项积分将系数中的 1/n 消去，得到一个几何级数，求和后再求导。",
+        "common_pitfalls": "1. 忽略对收敛区间端点进行单独的敛散性判别。2. 在处理和函数时，忘记对通过积分或求导操作后的结果进行逆运算（即积分后忘记求导，或求导后忘记积分）。3. 变量代换时，下标变换出错，导致级数通项错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "15",
+      "question_body": "计算曲面积分 $I=\\iint_S x(8y+1)dydz + 2(1-y^2)dzdx - 4yzdxdy$，其中 $S$ 是由曲线 $\\begin{cases} z = \\sqrt{y-1} \\\\ x = 0 \\end{cases}$, $(1 \\le y \\le 3)$ 绕 $y$ 轴旋转一周所成的曲面，它的法向量与 $y$ 轴正向的夹角大于 $\\frac{\\pi}{2}$ .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "高斯公式 (Gauss's Divergence Theorem)",
+        "secondary_knowledge_points": [
+          "旋成曲面的定义与性质",
+          "曲面积分的投影计算法 (合一投影法)",
+          "三重积分的计算 (柱坐标系或直角坐标系)",
+          "散度的计算"
+        ],
+        "question_type": "曲面积分计算题",
+        "methodology_and_tricks": "题眼在于识别积分曲面S是一个绕y轴旋转的曲面，且非封闭。解题的关键步骤是：1. 补充一个平面（通常是y=1或y=3）使其与S构成一个封闭曲面。2. 利用高斯公式将封闭曲面上的积分转化为三重积分。3. 计算该三重积分。4. 减去（或加上）所补充平面上的曲面积分，这个补充平面上的积分计算是另一个关键点，通常需要利用合一投影法或直接投影法。",
+        "common_pitfalls": "1. 忽略曲面的非封闭性，直接错误应用高斯公式。2. 在补充平面时，对法向量的方向判断错误，导致符号错误。3. 在所补充的简单平面（如圆盘）上计算曲面积分时，投影区域和法向量方向处理不当。4. 计算散度或三重积分时出现代数错误。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "16",
+      "question_body": "设函数 $f(x)$ 在闭区间 $[0,1]$ 上可微，对于 $[0,1]$ 上的每个 $x$，函数的值都在区间 $(0,1)$ 内，且 $f'(x) \\neq 1$，证明：在 $(0,1)$ 内有且仅有一个 $x$，使得 $f(x) = x$ .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "介值定理；罗尔定理（或拉格朗日中值定理的反证应用）",
+        "secondary_knowledge_points": [
+          "连续函数介值定理",
+          "导函数符号与函数单调性的关系",
+          "反证法"
+        ],
+        "question_type": "中值定理证明题",
+        "methodology_and_tricks": "题眼在于构造辅助函数 g(x) = f(x) - x。首先利用介值定理证明至少存在一个点 c 使 g(c)=0（即 f(c)=c）。再利用条件 f'(x) ≠ 1（即 g'(x) ≠ 0）和反证法，结合罗尔定理证明唯一性。",
+        "common_pitfalls": "忽略证明存在性，直接证明唯一性；未能正确构造辅助函数 g(x) = f(x) - x；在应用罗尔定理证明唯一性时，未能正确利用 g'(x) ≠ 0 的条件来排除存在两个零点的可能性。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "17",
+      "question_body": "问 $a,b$ 为何值时,线性方程组 $\\begin{cases} x_1+x_2+x_3+x_4=0 \\\\ x_2+2x_3+2x_4=1 \\\\ -x_2+(a-3)x_3-2x_4=b \\\\ 3x_1+2x_2+x_3+ax_4=-1 \\end{cases}$ 有唯一解? 无解? 有无穷多个解?并求出有无穷多个解时的通解.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "线性方程组解的判定定理：非齐次线性方程组 Ax=b 的解的情况（无解、唯一解、无穷多解）与系数矩阵的秩和增广矩阵的秩的关系。",
+        "secondary_knowledge_points": [
+          "矩阵的初等行变换",
+          "矩阵的秩的计算",
+          "线性方程组通解的结构（特解+齐次通解）",
+          "行列式（用于判断克拉默法则是否适用）"
+        ],
+        "question_type": "线性方程组解的判定与求解",
+        "methodology_and_tricks": "题眼在于对增广矩阵进行初等行变换，将其化为行阶梯形或行最简形。通过分析变换后矩阵中参数a, b所满足的条件（特别是看是否存在矛盾方程以及自由变量的个数），来判定解的情况。当有无穷多解时，从行最简形回代写出通解。",
+        "common_pitfalls": "1. 对增广矩阵进行初等行变换时计算错误，特别是含有参数时符号容易出错。2. 在讨论各种情况时，参数的范围划分不完整或存在遗漏。3. 在求无穷多解的通解时，忘记齐次解（基础解系）或特解的写法不规范。4. 误用克拉默法则（当系数矩阵不是方阵或行列式为零时无法直接使用）。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "18",
+      "question_body": "假设在一次试验中, 事件 A 发生的概率为 $p$, 现进行 $n$ 次独立试验, 则 A 至少发生一次的概率为 \\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore , 而事件 A 至多发生一次的概率为\\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "n重伯努利试验的概率计算",
+        "secondary_knowledge_points": [
+          "对立事件概率公式",
+          "概率加法原理",
+          "组合数计算"
+        ],
+        "question_type": "概率计算填空题",
+        "methodology_and_tricks": "利用对立事件转换概率计算：1. '至少发生一次' 转化为 1 减去 '一次都不发生' 的概率；2. '至多发生一次' 转化为 '发生0次' 与 '发生1次' 的概率之和。",
+        "common_pitfalls": "1. 混淆'至少'与'至多'的边界情况；2. 遗漏组合数系数 C(n,1)；3. 对立事件转化错误；4. 独立试验概率计算错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "19",
+      "question_body": "三个箱子, 第一个箱子中有 4 个黑球 1 个白球, 第二个箱子中有 3 个黑球 3 个白球, 第三个箱子中有 3 个黑球 5 个白球. 现随机地取一个箱子, 再从这个箱子中取出 1 个球, 这个球为白球的概率等于 \\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore . 已知取出的球是白球, 此球属于第二个箱子的概率为 \\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "全概率公式与贝叶斯公式",
+        "secondary_knowledge_points": [
+          "古典概型",
+          "条件概率"
+        ],
+        "question_type": "全概率与贝叶斯公式计算题",
+        "methodology_and_tricks": "该题的解题关键是识别出题目包含两个递进的概率计算问题。第一个空是求随机取箱再取球得到白球的概率，属于“由因索果”的问题，应使用全概率公式，将总概率分解为各个箱子情况下的条件概率之和。第二个空是已知结果为白球，反推此结果来自第二个箱子的概率，属于“执果索因”的问题，应使用贝叶斯公式。解题时，首先应设事件（如设A_i表示取到第i个箱子，B表示取到白球），然后明确每个箱子被取到的先验概率（均为1/3）以及在各箱内取到白球的条件概率，最后代入公式进行精确计算。",
+        "common_pitfalls": "1. 混淆全概率公式与贝叶斯公式的适用场景，导致公式选用错误。2. 忽略各个箱子被随机选取的先验概率相等（均为1/3），错误分配权重。3. 在计算条件概率P(B|A_i)时，未能正确计算各箱子中白球的比例（如第二个箱子是3/(3+3)=1/2，而非3/6后不化简）。4. 在使用贝叶斯公式计算第二个空时，忘记分母正是第一个空利用全概率公式计算出的P(B)的值，导致重复计算或计算结果不一致。5. 最后结果未能化简为最简分数形式。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "20",
+      "question_body": "已知连续型随机变量 $X$ 的概率密度为 $f(x)=\\frac{1}{\\sqrt{\\pi}} e^{-x^{2}+2x-1}$, 则 $X$ 的数学期望为 \\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore , $X$ 的方差为 \\textunderscore \\textunderscore \\textunderscore \\textunderscore \\textunderscore .",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "随机变量的数学期望与方差的定义与计算",
+        "secondary_knowledge_points": [
+          "概率密度的归一性",
+          "正态分布的概率密度函数形式",
+          "指数部分的配方技巧",
+          "广义积分计算"
+        ],
+        "question_type": "连续型随机变量的数字特征计算题",
+        "methodology_and_tricks": "题眼在于对概率密度函数 $f(x)$ 的指数部分进行配方，将其整理为标准正态分布 $N(\\mu, \\sigma^2)$ 的概率密度函数形式 $f(x) = \\frac{1}{\\sqrt{2\\pi}\\sigma} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}$。通过比较，可以直接读出数学期望 $\\mu$ 和方差 $\\sigma^2$，而无需进行复杂的积分运算。",
+        "common_pitfalls": "最常见的错误是未能识别出给定的概率密度函数是正态分布的密度函数，而试图直接根据数学期望 $E(X) = \\int_{-\\infty}^{+\\infty} x f(x) dx$ 和方差 $D(X) = \\int_{-\\infty}^{+\\infty} (x - E(X))^2 f(x) dx$ 的定义去计算积分，这会使得计算变得非常繁琐且容易出错。另一个可能的错误是在配方过程中出现代数错误。",
+        "computational_workload": "低"
+      },
+      "is_multiple_choice": false
+    },
+    {
+      "question_number": "21",
+      "question_body": "设随机变量 $X, Y$ 相互独立, 其概率密度函数分别为 $f_{X}(x)=\\begin{cases} 1, & 0<x<1, \\\\ 0, & \\text{其他}, \\end{cases} f_{Y}(y)=\\begin{cases} e^{-y}, & y>0, \\\\ 0, & y \\le 0, \\end{cases}$ 求随机变量 $Z=2X+Y$ 的概率密度函数 $f_{Z}(z)$.",
+      "options": {},
+      "analysis": {
+        "primary_knowledge_point": "二维随机变量函数的分布（卷积公式）",
+        "secondary_knowledge_points": [
+          "独立随机变量的性质",
+          "均匀分布的概率密度函数",
+          "指数分布的概率密度函数",
+          "分段函数的积分计算",
+          "概率密度函数的非负性与归一性"
+        ],
+        "question_type": "随机变量函数的概率密度函数求解",
+        "methodology_and_tricks": "利用独立随机变量和的卷积公式 f_Z(z) = ∫_{-∞}^{+∞} f_X(x) f_Y(z-2x) dx。关键在于根据 X 和 Y 的概率密度函数非零区域（0<x<1 且 y>0）确定积分上下限，即解不等式组 0<x<1 且 z-2x>0。这导致需要对 z 的范围进行分段讨论：z<=0 时 f_Z(z)=0；0<z<=2 时，积分下限为0，上限为 z/2；z>2 时，积分下限为0，上限为1。",
+        "common_pitfalls": "1. 忽略变量替换后（Y=Z-2X）的取值范围，导致积分限确定错误。2. 在分段讨论时，对 z 的不同区间（特别是临界点 z=0 和 z=2）的积分上下限处理不清晰或遗漏。3. 最后的概率密度函数忘记注明定义域或未进行归一化验证（虽然本题无需额外验证）。4. 将卷积公式误写为 f_Z(z) = ∫ f_X(x) f_Y(2x-z) dx 等错误形式。",
+        "computational_workload": "中"
+      },
+      "is_multiple_choice": false
+    }
+  ],
+  "summary": {
+    "overview": {
+      "subject_domain": "1987年考研数学（一）真题",
+      "total_questions": 19,
+      "overall_difficulty_assessment": "中等偏下。试卷以基础题为主，覆盖范围广泛，计算量多在中等及以下，部分题目（如曲面积分、线性方程组解的判定）需要较强的综合分析能力。"
+    },
+    "module_weight_analysis": [
+      {
+        "module": "微积分学（一元与多元）",
+        "count": 6,
+        "percentage": "31.6%"
+      },
+      {
+        "module": "线性代数",
+        "count": 5,
+        "percentage": "26.3%"
+      },
+      {
+        "module": "概率论与数理统计",
+        "count": 5,
+        "percentage": "26.3%"
+      },
+      {
+        "module": "无穷级数与幂级数",
+        "count": 2,
+        "percentage": "10.5%"
+      },
+      {
+        "module": "空间解析几何",
+        "count": 1,
+        "percentage": "5.3%"
+      }
+    ],
+    "synthesis_and_flexibility_analysis": "本次试卷综合性要求中等。大部分题目侧重于单一核心知识点的考察，但如第七题（曲面积分）要求综合运用高斯公式、三重积分及曲面补充技巧；第九题（线性方程组解的情况）和第四题（高阶微分方程）体现了对知识体系内部融合与多情况分析能力的要求。纯跨章节的综合题占比较少。",
+    "computational_skills_diagnosis": "试卷整体计算量适中。多数题目计算复杂度为低或中等，计算错误主要集中在：向量叉积与矩阵运算的符号与顺序错误（如题一、二(2)）、定积分与曲线/曲面积分中积分限与投影区域确定错误（如题三、四、七）、以及含参线性方程组行变换时的代数错误（题九）。对计算的准确性要求高于对复杂度的要求。",
+    "strategic_recommendations": {
+      "focus_areas": [
+        "多元函数积分学（曲线曲面积分及其与重积分的关系）",
+        "线性代数（矩阵方程求解、线性方程组解的判定与求解）",
+        "常微分方程（高阶线性方程解法）",
+        "概率论（随机变量函数的分布，尤其是卷积公式的应用）"
+      ],
+      "predicted_pitfalls_summary": [
+        "向量、矩阵运算中因忽视顺序或符号导致的错误",
+        "积分计算中（特别是重积分、曲线曲面积分）积分区域或上下限确定错误",
+        "应用定理（如格林公式、高斯公式、介值定理等）时忽略前提条件或方向性",
+        "讨论含参数方程（组）时，对参数范围的划分不完整或遗漏临界情况"
+      ],
+      "improvement_suggestions": "加强概念理解，确保在应用重要定理前验证其条件；通过典型例题训练，提高对向量、矩阵运算和各类积分计算的熟练度与准确性；针对综合性应用题，培养拆解问题、联系多个知识点的能力，并进行分类讨论的专项练习。"
+    }
+  }
+}

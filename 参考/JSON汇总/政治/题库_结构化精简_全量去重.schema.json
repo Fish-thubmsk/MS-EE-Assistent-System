@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.schema/题库_结构化精简_全量去重.schema.json",
+  "title": "考研政治题库结构化数据 Schema（全量去重版）",
+  "description": "用于校验并说明 `题库_结构化精简_全量去重.json` 的完整结构。该 Schema 兼顾严谨校验与数据库建模说明，字段描述均为中文。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generatedAt",
+    "source",
+    "sourceHarFiles",
+    "totalYears",
+    "totalSections",
+    "totalQuestions",
+    "years"
+  ],
+  "properties": {
+    "generatedAt": {
+      "$ref": "#/$defs/dateTimeLocal",
+      "description": "数据生成时间（本地时间字符串，格式示例：2026-04-01T00:03:50）。建议入库为 DATETIME。"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "数据来源描述，例如：Merged from local HAR captures。"
+    },
+    "sourceHarFiles": {
+      "type": "array",
+      "description": "参与合并的 HAR 文件名列表（来源追溯字段）。建议单独建 source_file 维表。",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "totalYears": {
+      "$ref": "#/$defs/intLikeNumber",
+      "description": "年份节点总数（通常为 13，对应 2013~2025）。"
+    },
+    "totalSections": {
+      "$ref": "#/$defs/intLikeNumber",
+      "description": "section 总数。一个年份下可能有 2~3 个 section（单选/多选/材料分析）。"
+    },
+    "totalQuestions": {
+      "$ref": "#/$defs/intLikeNumber",
+      "description": "全库题目总数（不含 subQuestions 单独计数）。"
+    },
+    "years": {
+      "type": "array",
+      "description": "按年份分组的数据主数组。",
+      "items": {
+        "$ref": "#/$defs/yearNode"
+      }
+    }
+  },
+  "$defs": {
+    "dateTimeLocal": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$",
+      "examples": [
+        "2026-04-01T00:03:50"
+      ]
+    },
+    "intLikeNumber": {
+      "description": "兼容整数与类似 28.0 这类数值（来自部分序列化器）。数据库落地建议统一转 INT。",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "number",
+          "minimum": 0
+        }
+      ]
+    },
+    "answerValue": {
+      "description": "标准答案。选择题通常为字母串（A/B/CD）；分析题小问通常为文本数组；也可能为空。",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "常见值：A / B / C / D / AC / BCD；也可能是文本答案。"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "questionTypeCode": {
+      "type": "string",
+      "description": "题目类型编码：1=单选，2=多选，5=分析题小问，6=材料分析题主题干。",
+      "pattern": "^(1|2|5|6)$"
+    },
+    "questionTypeName": {
+      "type": "string",
+      "description": "题目类型中文名。建议数据库中建立 type_code 与 type_name 映射字典表。",
+      "enum": [
+        "单选题",
+        "多选题",
+        "分析题-小问",
+        "材料分析题"
+      ]
+    },
+    "subQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "typeName",
+        "stem",
+        "options",
+        "answer",
+        "analysis",
+        "score",
+        "originalId"
+      ],
+      "description": "材料分析题下的小问。建议数据库中以 parent_question_id 外键关联主题。",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "重排后的小问序号（同一主题内从 1 开始）。"
+        },
+        "originalId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "原始平台题目 ID（用于溯源与去重）。建议加唯一索引（结合年份/chapter 维度）。"
+        },
+        "type": {
+          "$ref": "#/$defs/questionTypeCode"
+        },
+        "typeName": {
+          "$ref": "#/$defs/questionTypeName"
+        },
+        "stem": {
+          "type": "string",
+          "description": "小问题干（已清洗 HTML 标签后的纯文本）。"
+        },
+        "options": {
+          "type": "array",
+          "description": "小问选项（一般为空数组）。",
+          "items": {
+            "type": "string"
+          }
+        },
+        "answer": {
+          "$ref": "#/$defs/answerValue"
+        },
+        "analysis": {
+          "type": "string",
+          "description": "解析文本（可能为空字符串）。"
+        },
+        "score": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "分值。"
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "typeName",
+        "stem",
+        "options",
+        "answer",
+        "analysis",
+        "source",
+        "difficulty",
+        "score",
+        "originalId"
+      ],
+      "description": "题目实体。若为材料分析题主题干（type=6），通常包含 subQuestions。",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "重排后的题号（在当前 section 内从 1 开始）。"
+        },
+        "originalId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "原始题目 ID。数据库建议作为业务主键候选之一。"
+        },
+        "type": {
+          "$ref": "#/$defs/questionTypeCode"
+        },
+        "typeName": {
+          "$ref": "#/$defs/questionTypeName"
+        },
+        "stem": {
+          "type": "string",
+          "description": "题干（HTML 清洗后文本）。建议数据库 TEXT。"
+        },
+        "options": {
+          "type": "array",
+          "description": "选项数组。单选/多选通常 4 项；材料题主题干通常为空。",
+          "items": {
+            "type": "string"
+          }
+        },
+        "answer": {
+          "$ref": "#/$defs/answerValue"
+        },
+        "analysis": {
+          "type": "string",
+          "description": "题目解析。"
+        },
+        "source": {
+          "type": "string",
+          "description": "来源字段（当前数据多为空字符串）。"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "难度等级（如 1/2/3）。"
+        },
+        "score": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "分值。"
+        },
+        "subQuestions": {
+          "type": "array",
+          "description": "仅材料分析题可能存在。数组每项为一个小问。",
+          "items": {
+            "$ref": "#/$defs/subQuestion"
+          }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sectionId",
+        "chapterId",
+        "sectionTitle",
+        "questionType",
+        "sourceFiles",
+        "questionCount",
+        "questions"
+      ],
+      "description": "年份下的题型分组（通常为单选题/多选题/材料分析题）。",
+      "properties": {
+        "sectionId": {
+          "type": "string",
+          "pattern": "^\\d+\\|\\d+$",
+          "description": "分组 ID，格式通常为 chapterId|typeCode，例如 12720|1。"
+        },
+        "chapterId": {
+          "type": "string",
+          "pattern": "^\\d+$",
+          "description": "章节 ID（源系统 chapter id）。"
+        },
+        "sectionTitle": {
+          "type": "string",
+          "description": "分组标题。"
+        },
+        "questionType": {
+          "type": "string",
+          "description": "分组题型中文名（如 单选题/多选题/材料分析题）。"
+        },
+        "sourceFiles": {
+          "type": "array",
+          "description": "此分组数据来自哪些 HAR 文件。",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "questionCount": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "该 section 的题目数量（应等于 questions.length）。"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/question"
+          }
+        }
+      }
+    },
+    "yearNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "year",
+        "yearTitle",
+        "sectionCount",
+        "questionCount",
+        "sections"
+      ],
+      "description": "按年份聚合节点。",
+      "properties": {
+        "year": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "年份（如 2025）。若无法识别年份，可能为 0。"
+        },
+        "yearTitle": {
+          "type": "string",
+          "description": "年份标题（如 2025年真题）。"
+        },
+        "sectionCount": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "本年份下 section 数量（应等于 sections.length）。"
+        },
+        "questionCount": {
+          "$ref": "#/$defs/intLikeNumber",
+          "description": "本年份下题目总数（应等于所有 section.questionCount 之和）。"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/section"
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "generatedAt": "2026-04-01T00:03:50",
+      "source": "Merged from local HAR captures",
+      "sourceHarFiles": [
+        "24单选.har",
+        "单选题.har",
+        "多选题.har",
+        "分析题.har",
+        "其余题目.har",
+        "list.har"
+      ],
+      "totalYears": 13,
+      "totalSections": 28,
+      "totalQuestions": 439,
+      "years": []
+    }
+  ]
+}
