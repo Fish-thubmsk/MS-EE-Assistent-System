@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 from fastapi import APIRouter
@@ -21,6 +22,9 @@ from agents.diagnosis_agent import (
     RecommendedNote,
     run_diagnosis,
 )
+from backend.database.db_manager import get_db_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/diagnosis", tags=["diagnosis"])
 
@@ -107,11 +111,19 @@ def run_diagnosis_api(req: DiagnosisRequest) -> DiagnosisResponse:
     """
     分析用户做题历史，识别薄弱知识点，生成个性化推荐与诊断报告。
 
-    - 若 **history_records** 为空，优先从数据库读取该用户的真实做题记录；DB 无数据时自动使用内置 mock 数据演示。
+    - 若 **history_records** 为空，优先从 userdata.db 读取该用户的真实做题记录；DB 无数据时自动使用内置 mock 数据演示。
     - 可通过 **subject** 限定分析范围（如只分析"数学"）。
     - **weak_threshold** 控制薄弱点判定准确率阈值（默认 0.6）。
+    - 诊断完成后结果自动持久化到 userdata.db，可通过 GET /api/users/{user_id}/diagnosis 查询历史报告。
     """
-    records = [r.model_dump() for r in req.history_records] if req.history_records else None
+    # 若请求中已携带 history_records，直接使用；否则从 userdata.db 读取
+    if req.history_records:
+        records: Optional[list[dict]] = [r.model_dump() for r in req.history_records]
+    else:
+        db_records = get_db_manager().get_quiz_records(
+            req.user_id, subject=req.subject, limit=500
+        )
+        records = db_records if db_records else None
 
     state = run_diagnosis(
         user_id=req.user_id,
@@ -120,6 +132,20 @@ def run_diagnosis_api(req: DiagnosisRequest) -> DiagnosisResponse:
         weak_threshold=req.weak_threshold,
         recommend_per_point=req.recommend_per_point,
     )
+
+    # 持久化诊断报告
+    try:
+        get_db_manager().save_diagnosis_report(
+            user_id=state["user_id"],
+            subject=state.get("subject"),
+            weak_points=state["weak_points"],
+            recommended_questions=state["recommended_questions"],
+            recommended_notes=state["recommended_notes"],
+            report_text=state["report"],
+            weak_threshold=req.weak_threshold,
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist diagnosis report: %s", exc)
 
     return DiagnosisResponse(
         user_id=state["user_id"],
