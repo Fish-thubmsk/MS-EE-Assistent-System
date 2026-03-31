@@ -59,6 +59,10 @@ class QuestionOut(BaseModel):
     year: Optional[int] = Field(None, description="年份")
     question_type: Optional[str] = Field(None, description="题型")
     content: str = Field(..., description="题目内容")
+    options: Optional[dict[str, str]] = Field(None, description="选项 {A:..., B:..., C:..., D:...}")
+    correct_answer: Optional[str] = Field(None, description="正确答案")
+    analysis: Optional[str] = Field(None, description="解析")
+    passage_text: Optional[str] = Field(None, description="英语阅读文章原文")
     knowledge_points: list[str] = Field(default_factory=list, description="涉及知识点")
 
 
@@ -208,6 +212,10 @@ async def get_practice_question(
         year=q.get("year"),
         question_type=q.get("question_type"),
         content=q["content"],
+        options=q.get("options"),
+        correct_answer=q.get("correct_answer"),
+        analysis=q.get("analysis"),
+        passage_text=None,
         knowledge_points=q.get("knowledge_points", []),
     )
 
@@ -220,21 +228,25 @@ def _fetch_random_question_from_db(
     if not _DB_PATH.exists():
         return None
 
-    conditions = ["is_active = 1"]
+    conditions = ["q.is_active = 1"]
     params: list[Any] = []
     if subject:
-        conditions.append("subject = ?")
+        conditions.append("q.subject = ?")
         params.append(subject)
     if question_type:
-        conditions.append("question_type = ?")
+        conditions.append("q.question_type = ?")
         params.append(question_type)
 
     # `conditions` contains only hardcoded literal SQL fragments; user values are
     # always bound via parameterised placeholders (`params`) to prevent SQL injection.
     where_clause = " AND ".join(conditions)
     sql = (
-        "SELECT id, subject, year, question_type, content, knowledge_structure "
-        f"FROM questions WHERE {where_clause} ORDER BY RANDOM() LIMIT 1"
+        "SELECT q.id, q.subject, q.year, q.question_type, q.content, "
+        "q.options, q.correct_answer, q.analysis, q.knowledge_structure, "
+        "q.passage_id, p.passage_text "
+        "FROM questions q "
+        "LEFT JOIN passages p ON p.id = q.passage_id "
+        f"WHERE {where_clause} ORDER BY RANDOM() LIMIT 1"
     )
 
     try:
@@ -248,7 +260,12 @@ def _fetch_random_question_from_db(
     if not row:
         return None
 
-    db_id, db_subject, db_year, db_question_type, db_content, db_ks = row
+    (
+        db_id, db_subject, db_year, db_question_type, db_content,
+        db_options_raw, db_correct_answer, db_analysis,
+        db_ks, db_passage_id, db_passage_text,
+    ) = row
+
     knowledge_points: list[str] = []
     if db_ks:
         try:
@@ -260,12 +277,25 @@ def _fetch_random_question_from_db(
         except (json.JSONDecodeError, TypeError):
             pass
 
+    options: Optional[dict[str, str]] = None
+    if db_options_raw:
+        try:
+            parsed = json.loads(db_options_raw)
+            if isinstance(parsed, dict) and parsed:
+                options = {str(k): str(v) for k, v in parsed.items()}
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     return QuestionOut(
         id=db_id,
         subject=db_subject,
         year=db_year,
         question_type=db_question_type,
         content=db_content,
+        options=options,
+        correct_answer=db_correct_answer or None,
+        analysis=db_analysis or None,
+        passage_text=db_passage_text or None,
         knowledge_points=knowledge_points,
     )
 
