@@ -2,9 +2,12 @@
 刷题（Practice）API 路由模块
 
 提供以下接口：
-    POST /api/practice          提交答案并获取批改结果与解析
-    POST /api/practice/stream   SSE 流式返回解析内容
-    GET  /api/practice/question 从数据库随机获取题目（支持学科筛选）
+    GET  /api/practice/subjects          返回科目列表
+    GET  /api/practice/types/{subject}   返回该科目的题型列表
+    GET  /api/practice/years/{subject}   返回该科目有数据的年份列表
+    GET  /api/practice/question          随机获取题目（支持科目+题型+年份筛选）
+    POST /api/practice                   提交答案并获取批改结果与解析
+    POST /api/practice/stream            SSE 流式返回解析内容
 """
 
 from __future__ import annotations
@@ -47,6 +50,47 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 # Delay between streamed characters to simulate a typing effect (seconds)
 _STREAM_CHAR_DELAY = 0.01
 
+# ---------------------------------------------------------------------------
+# 科目 / 题型配置（与 reference quiz_app.py 对齐）
+# ---------------------------------------------------------------------------
+
+_SUBJECTS = [
+    {"id": "politics", "name": "政治",  "icon": "🏛️"},
+    {"id": "math",     "name": "数学",  "icon": "📐"},
+    {"id": "english",  "name": "英语",  "icon": "📚"},
+]
+
+_TYPES: dict[str, list[dict[str, str]]] = {
+    "politics": [
+        {"id": "单选题",   "name": "单选题"},
+        {"id": "多选题",   "name": "多选题"},
+        {"id": "材料分析题", "name": "材料分析题"},
+    ],
+    "math": [
+        {"id": "single_choice", "name": "单选题"},
+        {"id": "fill_blank",    "name": "填空题"},
+        {"id": "subjective",    "name": "解答题"},
+    ],
+    "english": [
+        {"id": "cloze",         "name": "完形填空"},
+        {"id": "reading",       "name": "阅读理解"},
+        {"id": "new_type",      "name": "新题型"},
+        {"id": "translation",   "name": "翻译"},
+        {"id": "writing_small", "name": "小作文"},
+        {"id": "writing_large", "name": "大作文"},
+    ],
+}
+
+# Maps English frontend type id → question_number range in questions_english
+_ENGLISH_Q_NUMBER: dict[str, tuple[int, int]] = {
+    "cloze":         (1, 1),
+    "reading":       (2, 5),
+    "new_type":      (6, 6),
+    "translation":   (7, 7),
+    "writing_small": (8, 8),
+    "writing_large": (9, 9),
+}
+
 
 # ---------------------------------------------------------------------------
 # 请求 / 响应模型
@@ -58,12 +102,15 @@ class QuestionOut(BaseModel):
     subject: str = Field(..., description="学科")
     year: Optional[int] = Field(None, description="年份")
     question_type: Optional[str] = Field(None, description="题型")
-    content: str = Field(..., description="题目内容")
+    content: str = Field(..., description="题目内容（或小题标签）")
     options: Optional[dict[str, str]] = Field(None, description="选项 {A:..., B:..., C:..., D:...}")
     correct_answer: Optional[str] = Field(None, description="正确答案")
     analysis: Optional[str] = Field(None, description="解析")
     passage_text: Optional[str] = Field(None, description="英语阅读文章原文")
-    knowledge_points: list[str] = Field(default_factory=list, description="涉及知识点")
+    knowledge_points: list[str] = Field(default_factory=list, description="涉及知识点（预留）")
+    sub_questions: list[dict[str, Any]] = Field(
+        default_factory=list, description="子问题列表（材料分析题）"
+    )
 
 
 class GradeResultOut(BaseModel):
@@ -102,14 +149,14 @@ class PracticeResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 内部工具：quiz_records 持久化
+# 内部工具：quiz_records 持久化 (quiz_records table is part of new schema)
 # ---------------------------------------------------------------------------
 
 _quiz_records_table_ensured: bool = False
 
 
 def _ensure_quiz_records_table() -> None:
-    """确保 quiz_records 表存在于题库数据库中（每个进程生命周期内只建一次）。"""
+    """确保 quiz_records 表存在（新 DB 已含该表，这里做保底创建）。"""
     global _quiz_records_table_ensured
     if _quiz_records_table_ensured or not _DB_PATH.exists():
         return
@@ -146,7 +193,6 @@ def _save_quiz_record(
         _ensure_quiz_records_table()
         kps: list[str] = question.get("knowledge_points") or []
         knowledge_point = kps[0] if kps else question.get("knowledge_point", "")
-        # is_correct 为 None 时以 NULL 存储，区别于明确答错（0）
         is_correct_val: Optional[int] = None if is_correct is None else (1 if is_correct else 0)
         with sqlite3.connect(str(_DB_PATH)) as conn:
             conn.execute(
@@ -180,31 +226,365 @@ async def _stream_explanation(explanation: str) -> AsyncGenerator[str, None]:
 
 
 # ---------------------------------------------------------------------------
+# 内部工具：按新 schema 查询题目
+# ---------------------------------------------------------------------------
+
+def _db_connect() -> Optional[sqlite3.Connection]:
+    if not _DB_PATH.exists():
+        return None
+    conn = sqlite3.connect(str(_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _fetch_politics_question(
+    question_type: Optional[str],
+    year: Optional[int],
+) -> Optional[QuestionOut]:
+    """随机抽一道政治题（单选/多选/材料分析）。"""
+    conn = _db_connect()
+    if conn is None:
+        return None
+    try:
+        conditions = ["qp.question_type = ?"]
+        params: list[Any] = [question_type or "单选题"]
+        if year:
+            conditions.append("qp.year = ?")
+            params.append(year)
+
+        where = " AND ".join(conditions)
+
+        if question_type == "材料分析题":
+            # For analysis questions return material + first sub-question
+            sql = f"""
+                SELECT qp.id, qp.year, qp.stem, qp.question_type,
+                       qp.correct_answer, qp.analysis
+                FROM questions_politics qp
+                WHERE {where}
+                ORDER BY RANDOM() LIMIT 1
+            """
+            cur = conn.execute(sql, params)
+            row = cur.fetchone()
+            if not row:
+                return None
+            # Fetch sub-questions
+            sq_cur = conn.execute(
+                "SELECT sub_question_number, stem, answer FROM sub_questions "
+                "WHERE subject_type='politics' AND question_id=? ORDER BY sub_question_number",
+                (row["id"],),
+            )
+            sub_qs = sq_cur.fetchall()
+            sub_list = [
+                {"number": sq["sub_question_number"], "stem": sq["stem"], "answer": sq["answer"]}
+                for sq in sub_qs
+            ]
+            return QuestionOut(
+                id=row["id"],
+                subject="政治",
+                year=row["year"],
+                question_type=row["question_type"],
+                content=row["stem"],
+                options=None,
+                correct_answer=None,
+                analysis=None,
+                passage_text=None,
+                sub_questions=sub_list,
+            )
+        else:
+            # single/multiple choice: join sub_questions + options
+            sql = f"""
+                SELECT qp.id, qp.year, qp.stem, qp.question_type,
+                       qp.correct_answer, qp.analysis,
+                       MAX(CASE WHEN o.option_key='A' THEN o.option_text END) AS optA,
+                       MAX(CASE WHEN o.option_key='B' THEN o.option_text END) AS optB,
+                       MAX(CASE WHEN o.option_key='C' THEN o.option_text END) AS optC,
+                       MAX(CASE WHEN o.option_key='D' THEN o.option_text END) AS optD
+                FROM questions_politics qp
+                JOIN sub_questions sq ON sq.question_id=qp.id AND sq.subject_type='politics'
+                LEFT JOIN options o ON o.sub_question_id=sq.id AND o.subject_type='politics'
+                WHERE {where}
+                GROUP BY qp.id
+                ORDER BY RANDOM() LIMIT 1
+            """
+            cur = conn.execute(sql, params)
+            row = cur.fetchone()
+            if not row:
+                return None
+            opts: dict[str, str] = {}
+            for k, col in [("A", "optA"), ("B", "optB"), ("C", "optC"), ("D", "optD")]:
+                if row[col]:
+                    opts[k] = row[col]
+            return QuestionOut(
+                id=row["id"],
+                subject="政治",
+                year=row["year"],
+                question_type=row["question_type"],
+                content=row["stem"],
+                options=opts or None,
+                correct_answer=row["correct_answer"],
+                analysis=row["analysis"] or None,
+                passage_text=None,
+            )
+    except sqlite3.Error as exc:
+        logger.warning("Politics DB query failed: %s", exc)
+        return None
+    finally:
+        conn.close()
+
+
+def _fetch_math_question(
+    question_type: Optional[str],
+    year: Optional[int],
+) -> Optional[QuestionOut]:
+    """随机抽一道数学题。"""
+    conn = _db_connect()
+    if conn is None:
+        return None
+    try:
+        # Map frontend type to DB question_type
+        db_type = question_type or "single_choice"
+
+        conditions = ["qm.question_type = ?"]
+        params: list[Any] = [db_type]
+
+        year_join = ""
+        if year:
+            # paper_title starts with year for most papers
+            conditions.append("CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) = ?")
+            params.append(year)
+            year_join = "LEFT JOIN papers p ON p.id=qm.paper_id"
+        else:
+            year_join = "LEFT JOIN papers p ON p.id=qm.paper_id"
+
+        where = " AND ".join(conditions)
+
+        sql = f"""
+            SELECT qm.id, qm.question_type, qm.stem,
+                   s.subject_name AS math_type,
+                   CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) AS year,
+                   MAX(CASE WHEN o.option_key='A' THEN o.option_text END) AS optA,
+                   MAX(CASE WHEN o.option_key='B' THEN o.option_text END) AS optB,
+                   MAX(CASE WHEN o.option_key='C' THEN o.option_text END) AS optC,
+                   MAX(CASE WHEN o.option_key='D' THEN o.option_text END) AS optD,
+                   sq.answer
+            FROM questions_math qm
+            {year_join}
+            LEFT JOIN subjects s ON s.subject_code=p.subject_code
+            LEFT JOIN sub_questions sq ON sq.question_id=qm.id AND sq.subject_type='math'
+            LEFT JOIN options o ON o.sub_question_id=sq.id AND o.subject_type='math'
+            WHERE {where}
+            GROUP BY qm.id
+            ORDER BY RANDOM() LIMIT 1
+        """
+        cur = conn.execute(sql, params)
+        row = cur.fetchone()
+        if not row:
+            return None
+        opts: dict[str, str] = {}
+        for k, col in [("A", "optA"), ("B", "optB"), ("C", "optC"), ("D", "optD")]:
+            if row[col]:
+                opts[k] = row[col]
+
+        # year from paper_title might not be a valid year
+        db_year: Optional[int] = None
+        try:
+            y = int(row["year"])
+            if 2000 <= y <= 2030:
+                db_year = y
+        except (TypeError, ValueError):
+            pass
+
+        return QuestionOut(
+            id=row["id"],
+            subject=f"数学（{row['math_type']}）" if row["math_type"] else "数学",
+            year=db_year,
+            question_type=row["question_type"],
+            content=row["stem"],
+            options=opts or None,
+            correct_answer=row["answer"] or None,
+            analysis=None,
+            passage_text=None,
+        )
+    except sqlite3.Error as exc:
+        logger.warning("Math DB query failed: %s", exc)
+        return None
+    finally:
+        conn.close()
+
+
+def _fetch_english_question(
+    qtype_id: Optional[str],
+    year: Optional[int],
+) -> Optional[QuestionOut]:
+    """随机抽一道英语题（按 question_number 范围区分题型）。"""
+    conn = _db_connect()
+    if conn is None:
+        return None
+    try:
+        qtype_id = qtype_id or "reading"
+        qnum_range = _ENGLISH_Q_NUMBER.get(qtype_id, (2, 5))
+        q_lo, q_hi = qnum_range
+
+        conditions = ["qe.question_number BETWEEN ? AND ?"]
+        params: list[Any] = [q_lo, q_hi]
+        if year:
+            conditions.append("qe.year = ?")
+            params.append(year)
+        where = " AND ".join(conditions)
+
+        if qtype_id in ("translation", "writing_small", "writing_large"):
+            # No sub-questions / options for writing and translation
+            sql = f"""
+                SELECT qe.id, qe.year, qe.question_number, qe.question_type, qe.content
+                FROM questions_english qe
+                WHERE {where}
+                ORDER BY RANDOM() LIMIT 1
+            """
+            cur = conn.execute(sql, params)
+            row = cur.fetchone()
+            if not row:
+                return None
+            return QuestionOut(
+                id=row["id"],
+                subject="英语",
+                year=row["year"],
+                question_type=row["question_type"],
+                content=row["content"],
+                options=None,
+                correct_answer=None,
+                analysis=None,
+                passage_text=None,
+            )
+
+        # For reading, cloze, new_type: pick a random sub-question
+        sql = f"""
+            SELECT qe.id, qe.year, qe.question_number, qe.question_type,
+                   qe.content AS article,
+                   sq.id AS sub_q_id, sq.sub_question_number, sq.answer, sq.analysis,
+                   MAX(CASE WHEN o.option_key='A' THEN o.option_text END) AS optA,
+                   MAX(CASE WHEN o.option_key='B' THEN o.option_text END) AS optB,
+                   MAX(CASE WHEN o.option_key='C' THEN o.option_text END) AS optC,
+                   MAX(CASE WHEN o.option_key='D' THEN o.option_text END) AS optD
+            FROM questions_english qe
+            JOIN sub_questions sq ON sq.question_id=qe.id AND sq.subject_type='english'
+            LEFT JOIN options o ON o.sub_question_id=sq.id AND o.subject_type='english'
+            WHERE {where}
+            GROUP BY sq.id
+            ORDER BY RANDOM() LIMIT 1
+        """
+        cur = conn.execute(sql, params)
+        row = cur.fetchone()
+        if not row:
+            return None
+        opts: dict[str, str] = {}
+        for k, col in [("A", "optA"), ("B", "optB"), ("C", "optC"), ("D", "optD")]:
+            if row[col]:
+                opts[k] = row[col]
+        sub_num = row["sub_question_number"]
+        content_label = f"第 {sub_num} 题" if sub_num else "本篇小题"
+        return QuestionOut(
+            id=row["sub_q_id"],
+            subject="英语",
+            year=row["year"],
+            question_type=row["question_type"],
+            content=content_label,
+            options=opts or None,
+            correct_answer=row["answer"] or None,
+            analysis=row["analysis"] or None,
+            passage_text=row["article"] or None,
+        )
+    except sqlite3.Error as exc:
+        logger.warning("English DB query failed: %s", exc)
+        return None
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
 # 接口实现
 # ---------------------------------------------------------------------------
 
 
-@router.get("/question", response_model=QuestionOut, summary="随机获取题目（支持学科筛选）")
+@router.get("/subjects", summary="获取科目列表")
+async def get_subjects() -> list[dict]:
+    return _SUBJECTS
+
+
+@router.get("/types/{subject}", summary="获取科目的题型列表")
+async def get_subject_types(subject: str) -> list[dict]:
+    types = _TYPES.get(subject)
+    if types is None:
+        raise HTTPException(status_code=404, detail=f"Unknown subject: {subject}")
+    return types
+
+
+@router.get("/years/{subject}", summary="获取科目有数据的年份列表")
+async def get_years(subject: str) -> list[int]:
+    conn = _db_connect()
+    if conn is None:
+        return []
+    try:
+        if subject == "politics":
+            cur = conn.execute(
+                "SELECT DISTINCT year FROM questions_politics WHERE year IS NOT NULL ORDER BY year DESC"
+            )
+        elif subject == "english":
+            cur = conn.execute(
+                "SELECT DISTINCT year FROM questions_english WHERE year IS NOT NULL ORDER BY year DESC"
+            )
+        elif subject == "math":
+            cur = conn.execute(
+                """
+                SELECT DISTINCT CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) AS y
+                FROM papers p
+                WHERE CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) BETWEEN 2000 AND 2030
+                ORDER BY y DESC
+                """
+            )
+        else:
+            return []
+        return [int(r[0]) for r in cur.fetchall() if r[0]]
+    except sqlite3.Error as exc:
+        logger.warning("Years query failed: %s", exc)
+        return []
+    finally:
+        conn.close()
+
+
+@router.get("/question", response_model=QuestionOut, summary="随机获取题目（支持科目/题型/年份筛选）")
 async def get_practice_question(
-    subject: Optional[str] = Query(None, description="学科筛选（数学/政治/英语），不传则全库随机"),
-    question_type: Optional[str] = Query(None, description="题型筛选，不传则不限"),
+    subject: Optional[str] = Query(None, description="科目：politics / math / english"),
+    question_type: Optional[str] = Query(None, description="题型 ID（各科不同）"),
+    year: Optional[int] = Query(None, description="年份，不传则全库随机"),
 ) -> QuestionOut:
     """
-    从知识库数据库随机抽取一道题目。支持按学科和题型筛选。
+    从知识库数据库随机抽取一道题目。
     若数据库不可用或无匹配题目，降级返回内置 mock 题目。
     """
     import random
 
-    row = _fetch_random_question_from_db(subject=subject, question_type=question_type)
+    row: Optional[QuestionOut] = None
+    if subject == "politics":
+        row = _fetch_politics_question(question_type, year)
+    elif subject == "math":
+        row = _fetch_math_question(question_type, year)
+    elif subject == "english":
+        row = _fetch_english_question(question_type, year)
+    else:
+        # No subject specified: pick randomly from any subject
+        import random as _rnd
+        fn = _rnd.choice([
+            lambda: _fetch_politics_question("单选题", None),
+            lambda: _fetch_math_question("single_choice", None),
+            lambda: _fetch_english_question("reading", None),
+        ])
+        row = fn()
+
     if row:
         return row
 
-    # 降级：从 mock 数据中随机选取（可按学科筛选）
+    # Fallback to mock data
     pool = MOCK_MATH_QUESTIONS
-    if subject:
-        pool = [q for q in MOCK_MATH_QUESTIONS if q.get("subject") == subject]
-    if not pool:
-        pool = MOCK_MATH_QUESTIONS
     q = random.choice(pool)
     return QuestionOut(
         id=q["id"],
@@ -216,87 +596,6 @@ async def get_practice_question(
         correct_answer=q.get("correct_answer"),
         analysis=q.get("analysis"),
         passage_text=None,
-        knowledge_points=q.get("knowledge_points", []),
-    )
-
-
-def _fetch_random_question_from_db(
-    subject: Optional[str] = None,
-    question_type: Optional[str] = None,
-) -> Optional[QuestionOut]:
-    """从 SQLite 数据库随机抽取一道激活的题目，失败时返回 None。"""
-    if not _DB_PATH.exists():
-        return None
-
-    conditions = ["q.is_active = 1"]
-    params: list[Any] = []
-    if subject:
-        conditions.append("q.subject = ?")
-        params.append(subject)
-    if question_type:
-        conditions.append("q.question_type = ?")
-        params.append(question_type)
-
-    # `conditions` contains only hardcoded literal SQL fragments; user values are
-    # always bound via parameterised placeholders (`params`) to prevent SQL injection.
-    where_clause = " AND ".join(conditions)
-    sql = (
-        "SELECT q.id, q.subject, q.year, q.question_type, q.content, "
-        "q.options, q.correct_answer, q.analysis, q.knowledge_structure, "
-        "q.passage_id, p.passage_text "
-        "FROM questions q "
-        "LEFT JOIN passages p ON p.id = q.passage_id "
-        f"WHERE {where_clause} ORDER BY RANDOM() LIMIT 1"
-    )
-
-    try:
-        with sqlite3.connect(str(_DB_PATH)) as conn:
-            cursor = conn.execute(sql, params)
-            row = cursor.fetchone()
-    except sqlite3.Error as exc:
-        logger.warning("DB query failed, falling back to mock questions: %s", exc)
-        return None
-
-    if not row:
-        return None
-
-    (
-        db_id, db_subject, db_year, db_question_type, db_content,
-        db_options_raw, db_correct_answer, db_analysis,
-        db_ks, db_passage_id, db_passage_text,
-    ) = row
-
-    knowledge_points: list[str] = []
-    if db_ks:
-        try:
-            ks = json.loads(db_ks)
-            if isinstance(ks, dict):
-                if ks.get("primary"):
-                    knowledge_points.append(ks["primary"])
-                knowledge_points.extend(ks.get("secondary") or [])
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    options: Optional[dict[str, str]] = None
-    if db_options_raw:
-        try:
-            parsed = json.loads(db_options_raw)
-            if isinstance(parsed, dict) and parsed:
-                options = {str(k): str(v) for k, v in parsed.items()}
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    return QuestionOut(
-        id=db_id,
-        subject=db_subject,
-        year=db_year,
-        question_type=db_question_type,
-        content=db_content,
-        options=options,
-        correct_answer=db_correct_answer or None,
-        analysis=db_analysis or None,
-        passage_text=db_passage_text or None,
-        knowledge_points=knowledge_points,
     )
 
 
