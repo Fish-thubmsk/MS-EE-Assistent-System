@@ -15,6 +15,7 @@ Quiz Agent — LangGraph 刷题模式 Student-Teacher Agent
 
 from __future__ import annotations
 
+import json
 import re
 import logging
 from typing import Any, Optional
@@ -244,27 +245,63 @@ class TeacherAgent:
     def _llm_grade(
         self, question: dict[str, Any], user_answer: str
     ) -> Optional[dict[str, Any]]:
-        """LLM 批改（可选增强）；失败时返回 None 让规则降级接管。"""
+        """LLM 批改（可选增强）；失败时返回 None 让规则降级接管。
+
+        使用 JSON 格式输出，支持语义等价答案识别和部分得分。
+        """
         content = question.get("content", "")
         correct_answer = question.get("correct_answer", "")
+        question_type = question.get("question_type", "")
         prompt = (
-            "你是严谨的老师，请批改学生答案。\n"
+            "你是严谨公正的老师，请批改学生答案。\n"
+            f"题型：{question_type or '未知题型'}\n"
             f"题目：{content}\n"
             f"参考答案：{correct_answer}\n"
             f"学生答案：{user_answer}\n\n"
-            "请按以下格式回答（每项占一行）：\n"
-            "是否正确：是/否/部分正确\n"
-            "得分：0-100\n"
-            "批改意见：<具体意见>"
+            "请以 JSON 格式返回批改结果，不要包含任何其他内容：\n"
+            '{"is_correct": true/false, "score": 0-100, "feedback": "详细批改意见"}\n\n'
+            "评分规则：\n"
+            "- is_correct 为 true 表示答案正确或语义等价，false 表示有明显错误\n"
+            "- score 为 0-100 的整数，支持部分得分（答对要点可得部分分）\n"
+            "- 语义等价的答案（如同义词、等价表达）应判为正确\n"
+            "- feedback 需包含：评分理由、错误点分析（如有）、改进建议"
         )
         try:
             resp = self._llm.invoke(prompt)
             text = getattr(resp, "content", str(resp)).strip()
+            # Try JSON parsing first (handle markdown code blocks)
+            json_text = text
+            code_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+            if code_block:
+                json_text = code_block.group(1)
+            else:
+                json_match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+                if json_match:
+                    json_text = json_match.group()
+            try:
+                parsed = json.loads(json_text)
+                is_correct_val = parsed.get("is_correct")
+                if isinstance(is_correct_val, str):
+                    is_correct_val = is_correct_val.lower() in ("true", "是", "正确")
+                score_val = parsed.get("score")
+                if score_val is not None:
+                    try:
+                        score_val = int(score_val)
+                    except (TypeError, ValueError):
+                        score_val = None
+                return {
+                    "is_correct": bool(is_correct_val) if is_correct_val is not None else None,
+                    "score": score_val,
+                    "feedback": str(parsed.get("feedback", "")),
+                }
+            except (json.JSONDecodeError, KeyError, TypeError):
+                pass
+            # Fallback to line-based parsing
             result: dict[str, Any] = {"is_correct": None, "score": None, "feedback": ""}
             for line in text.splitlines():
                 if line.startswith("是否正确"):
                     val = line.split("：", 1)[-1].strip()
-                    result["is_correct"] = val in ("是", "正确")
+                    result["is_correct"] = val in ("是", "正确", "true", "True")
                 elif line.startswith("得分"):
                     m = re.search(r"\d+", line)
                     if m:
