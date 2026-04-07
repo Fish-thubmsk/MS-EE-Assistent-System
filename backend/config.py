@@ -100,6 +100,16 @@ class Settings(BaseSettings):
     )
     log_level: str = Field(default="INFO", description="日志级别")
 
+    # -----------------------------------------------------------------------
+    # JWT 认证
+    # -----------------------------------------------------------------------
+    jwt_secret_key: str = Field(
+        default="CHANGE_ME_IN_PRODUCTION_USE_RANDOM_32_CHARS",
+        description="JWT 签名密钥（生产环境必须替换为强随机字符串）",
+    )
+    jwt_algorithm: str = Field(default="HS256", description="JWT 签名算法")
+    jwt_expire_minutes: int = Field(default=60 * 24, description="JWT 有效期（分钟），默认 24 小时")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

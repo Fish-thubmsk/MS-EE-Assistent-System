@@ -523,6 +523,29 @@
 })();
 
 // ============================================================
+// Auth helpers
+// ============================================================
+function authToken() {
+  return localStorage.getItem('auth_token') || '';
+}
+
+function authHeaders(extraHeaders = {}) {
+  return Object.assign({ 'Authorization': `Bearer ${authToken()}` }, extraHeaders);
+}
+
+async function handleAuthError(resp) {
+  if (resp.status === 401) {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('display_name');
+    localStorage.removeItem('username');
+    window.location.replace('login.html');
+    return true;
+  }
+  return false;
+}
+
+// ============================================================
 // Populate navbar / sidebar user info
 // ============================================================
 const _userId      = localStorage.getItem('user_id');
@@ -541,6 +564,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('user_id');
   localStorage.removeItem('display_name');
+  localStorage.removeItem('username');
   localStorage.removeItem('user_subject');
   localStorage.removeItem('user_initials');
   window.location.replace('login.html');
@@ -728,7 +752,7 @@ async function sendQASync(text) {
   try {
     const resp = await fetch(apiUrl('/api/answer'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         user_input: text,
         messages: state.messages.slice(-10),
@@ -736,6 +760,7 @@ async function sendQASync(text) {
         use_chroma: useChroma(),
       }),
     });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     removeTypingIndicator();
@@ -756,7 +781,7 @@ async function sendQAStream(text) {
   try {
     const resp = await fetch(apiUrl('/api/answer/stream'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         user_input: text,
         messages: state.messages.slice(-10),
@@ -764,6 +789,7 @@ async function sendQAStream(text) {
         use_chroma: useChroma(),
       }),
     });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     removeTypingIndicator();
@@ -848,7 +874,7 @@ const practiceYearSel    = document.getElementById('practice-year');
 // --- Bootstrap selectors from new API ---
 async function initPracticeSelectors() {
   try {
-    const subjects = await (await fetch(apiUrl('/api/practice/subjects'))).json();
+    const subjects = await (await fetch(apiUrl('/api/practice/subjects'), { headers: authHeaders() })).json();
     practiceSubjectSel.innerHTML = '<option value="">选择科目…</option>' +
       subjects.map(s => `<option value="${s.id}">${s.icon || ''} ${s.name}</option>`).join('');
   } catch (e) {
@@ -861,7 +887,7 @@ async function loadPracticeTypes() {
   practiceTypeSel.innerHTML = '<option value="">题型</option>';
   if (!subject) return;
   try {
-    const types = await (await fetch(apiUrl(`/api/practice/types/${subject}`))).json();
+    const types = await (await fetch(apiUrl(`/api/practice/types/${subject}`), { headers: authHeaders() })).json();
     practiceTypeSel.innerHTML = types.map(t =>
       `<option value="${t.id}">${t.name}</option>`
     ).join('');
@@ -873,7 +899,7 @@ async function loadPracticeYears() {
   practiceYearSel.innerHTML = '<option value="">全部年份</option>';
   if (!subject) return;
   try {
-    const years = await (await fetch(apiUrl(`/api/practice/years/${subject}`))).json();
+    const years = await (await fetch(apiUrl(`/api/practice/years/${subject}`), { headers: authHeaders() })).json();
     practiceYearSel.innerHTML = '<option value="">全部年份</option>' +
       years.map(y => `<option value="${y}">${y}</option>`).join('');
   } catch (e) { console.warn('Failed to load years', e); }
@@ -900,7 +926,8 @@ async function loadQuestion() {
     if (qtype)   params.set('question_type', qtype);
     if (year)    params.set('year', year);
     const url = apiUrl('/api/practice/question') + (params.toString() ? '?' + params.toString() : '');
-    const resp = await fetch(url);
+    const resp = await fetch(url, { headers: authHeaders() });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const q = await resp.json();
     state.currentQuestion = q;
@@ -1098,7 +1125,7 @@ async function submitAnswerSync(text) {
   try {
     const resp = await fetch(apiUrl('/api/practice'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         user_input: text,
         current_question: state.currentQuestion,
@@ -1107,6 +1134,7 @@ async function submitAnswerSync(text) {
         quiz_history: state.quizHistory,
       }),
     });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     removeTypingIndicator();
@@ -1127,7 +1155,7 @@ async function submitAnswerStream(text) {
   try {
     const resp = await fetch(apiUrl('/api/practice/stream'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         user_input: text,
         current_question: state.currentQuestion,
@@ -1136,6 +1164,7 @@ async function submitAnswerStream(text) {
         quiz_history: state.quizHistory,
       }),
     });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     removeTypingIndicator();
@@ -1236,12 +1265,13 @@ async function runDiagnosis() {
   try {
     const resp = await fetch(apiUrl('/diagnosis/run'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         user_id: state.userId,
         subject: subject || null,
       }),
     });
+    if (await handleAuthError(resp)) return;
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     renderDiagnosis(data);

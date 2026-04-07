@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config import get_settings
 from backend.database.db_manager import init_db
 from backend.routers.answer import router as answer_router
+from backend.routers.auth import router as auth_router
 from backend.routers.chat import router as chat_router
 from backend.routers.diagnosis import router as diagnosis_router
 from backend.routers.notes import router as notes_router
@@ -55,6 +56,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # 路由注册
 # ---------------------------------------------------------------------------
+app.include_router(auth_router)
 app.include_router(notes_router)
 app.include_router(chat_router)
 app.include_router(diagnosis_router)

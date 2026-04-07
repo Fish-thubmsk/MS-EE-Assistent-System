@@ -9,6 +9,9 @@
   - GET  /api/answer/mock
   - POST /api/answer/stream  (SSE 流式)
   - POST /api/practice/stream (SSE 流式)
+  - POST /api/auth/register   用户注册
+  - POST /api/auth/login      用户登录
+  - GET  /api/auth/me         获取当前用户
 
 无需真实 LLM API Key，所有 LLM 相关调用均通过 mock 或降级路径验证。
 """
@@ -238,3 +241,104 @@ class TestConfig:
     def test_settings_model_switchable(self) -> None:
         s = Settings(llm_model="Qwen/Qwen2.5-72B-Instruct")
         assert s.llm_model == "Qwen/Qwen2.5-72B-Instruct"
+
+
+# ---------------------------------------------------------------------------
+# /api/auth  ── 认证端点
+# ---------------------------------------------------------------------------
+
+
+class TestAuth:
+    """测试 JWT 注册、登录和 /me 端点。"""
+
+    _test_user = {
+        "username": f"testuser_{__import__('os').getpid()}",
+        "password": "testpass123",
+        "display_name": "测试用户",
+    }
+
+    def test_register_success(self, client: TestClient) -> None:
+        resp = client.post("/api/auth/register", json=self._test_user)
+        assert resp.status_code == 201
+        data = resp.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["username"] == self._test_user["username"]
+        assert data["display_name"] == self._test_user["display_name"]
+        assert isinstance(data["user_id"], int)
+
+    def test_register_duplicate_username(self, client: TestClient) -> None:
+        """重复注册同一用户名应返回 409。"""
+        resp = client.post("/api/auth/register", json=self._test_user)
+        assert resp.status_code == 409
+        assert "已存在" in resp.json()["detail"]
+
+    def test_login_success(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": self._test_user["username"],
+                "password": self._test_user["password"],
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert data["username"] == self._test_user["username"]
+
+    def test_login_wrong_password(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": self._test_user["username"], "password": "wrongpass"},
+        )
+        assert resp.status_code == 401
+
+    def test_login_nonexistent_user(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": "no_such_user_xyz", "password": "abc123"},
+        )
+        assert resp.status_code == 401
+
+    def test_me_requires_token(self, client: TestClient) -> None:
+        """未携带 Token 时 /me 应返回 401。"""
+        resp = client.get("/api/auth/me")
+        assert resp.status_code == 401
+
+    def test_me_with_valid_token(self, client: TestClient) -> None:
+        # 先登录，拿 token
+        login_resp = client.post(
+            "/api/auth/login",
+            json={
+                "username": self._test_user["username"],
+                "password": self._test_user["password"],
+            },
+        )
+        token = login_resp.json()["access_token"]
+
+        me_resp = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert me_resp.status_code == 200
+        data = me_resp.json()
+        assert data["username"] == self._test_user["username"]
+        assert data["display_name"] == self._test_user["display_name"]
+        assert isinstance(data["user_id"], int)
+
+    def test_me_with_invalid_token(self, client: TestClient) -> None:
+        resp = client.get(
+            "/api/auth/me",
+            headers={"Authorization": "Bearer invalidtoken"},
+        )
+        assert resp.status_code == 401
+
+    def test_demo_user_login(self, client: TestClient) -> None:
+        """演示用户 user_001 应能用 exam2024 登录。"""
+        resp = client.post(
+            "/api/auth/login",
+            json={"username": "user_001", "password": "exam2024"},
+        )
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()

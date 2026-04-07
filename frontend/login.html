@@ -106,14 +106,16 @@
       <div class="demo-row"><code>user_002</code> <span>政治偏弱</span></div>
       <div class="demo-row"><code>user_003</code> <span>英语偏弱</span></div>
     </div>
+
+    <div class="text-center mt-3" style="font-size:0.85rem;color:#64748b;">
+      没有账号？<a href="register.html" style="color:var(--primary);text-decoration:none;font-weight:600;">立即注册</a>
+    </div>
   </div>
 
   <script>
-    const DEMO_USERS = {
-      'user_001': { password: 'exam2024', displayName: '同学甲', subject: '数学偏弱', initials: '甲' },
-      'user_002': { password: 'exam2024', displayName: '同学乙', subject: '政治偏弱', initials: '乙' },
-      'user_003': { password: 'exam2024', displayName: '同学丙', subject: '英语偏弱', initials: '丙' },
-    };
+    const API_BASE = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+      ? 'http://localhost:8000'
+      : '';
 
     // Redirect if already logged in
     if (localStorage.getItem('auth_token')) {
@@ -134,36 +136,56 @@
     });
 
     // Login form submit
-    document.getElementById('login-form').addEventListener('submit', e => {
+    document.getElementById('login-form').addEventListener('submit', async e => {
       e.preventDefault();
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       const errorMsg = document.getElementById('error-msg');
       const errorText = document.getElementById('error-text');
+      const btnLogin = document.querySelector('.btn-login');
 
       if (!username) {
         errorMsg.style.display = 'block';
         errorText.textContent = '请输入用户名';
         return;
       }
-
-      const user = DEMO_USERS[username];
-      if (!user || user.password !== password) {
+      if (!password) {
         errorMsg.style.display = 'block';
-        errorText.textContent = '用户名或密码错误';
-        document.getElementById('password').value = '';
+        errorText.textContent = '请输入密码';
         return;
       }
 
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>登录中…';
       errorMsg.style.display = 'none';
-      // Save auth info to localStorage
-      const token = btoa(username + ':' + Date.now());
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_id', username);
-      localStorage.setItem('display_name', user.displayName);
-      localStorage.setItem('user_subject', user.subject);
-      localStorage.setItem('user_initials', user.initials);
-      window.location.replace('index.html');
+
+      try {
+        const resp = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          localStorage.setItem('auth_token', data.access_token);
+          localStorage.setItem('user_id', String(data.user_id));
+          localStorage.setItem('display_name', data.display_name || data.username);
+          localStorage.setItem('username', data.username);
+          window.location.replace('index.html');
+        } else {
+          const err = await resp.json().catch(() => ({}));
+          errorMsg.style.display = 'block';
+          errorText.textContent = err.detail || '用户名或密码错误';
+          document.getElementById('password').value = '';
+        }
+      } catch (e) {
+        errorMsg.style.display = 'block';
+        errorText.textContent = '网络错误，请检查后端服务是否已启动';
+      } finally {
+        btnLogin.disabled = false;
+        btnLogin.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>登&nbsp;&nbsp;录';
+      }
     });
 
     // Enter key on username field moves focus to password
