@@ -36,6 +36,7 @@ def _test_settings() -> Settings:
         llm_model="deepseek-ai/DeepSeek-R1",
         llm_base_url="https://api.siliconflow.cn/v1",
         cors_origins=["*"],
+        jwt_secret_key="test-secret-key-for-unit-tests-only-do-not-use",
     )
 
 

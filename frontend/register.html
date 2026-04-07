@@ -171,6 +171,7 @@
       if (password !== confirm_password) {
         errorMsg.style.display = 'block';
         errorText.textContent = '两次输入的密码不一致';
+        document.getElementById('password').value = '';
         document.getElementById('confirm_password').value = '';
         return;
       }
