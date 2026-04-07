@@ -286,33 +286,63 @@ def _query_questions_by_knowledge_point(
     db_path: Optional[str] = None,
 ) -> list[RecommendedQuestion]:
     """
-    从 SQLite 按知识点关键词搜索相关题目。
+    从 SQLite 按知识点关键词搜索相关题目（适配新 7-表规范化 schema）。
 
     Falls back gracefully if the DB is missing or the query returns nothing.
     """
     path = str(db_path) if db_path else str(_DB_PATH)
     if not os.path.exists(path):
         return []
+
+    # Map UI subject names to table / query logic
+    subject_map = {
+        "政治": "politics",
+        "数学": "math",
+        "英语": "english",
+    }
+    subject_key = subject_map.get(subject, subject.lower())
+
     try:
         conn = sqlite3.connect(path)
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, subject, content, difficulty_level, correct_answer,
-                   knowledge_structure
-            FROM questions
-            WHERE subject = ?
-              AND is_active = 1
-              AND content IS NOT NULL
-              AND (
-                    knowledge_structure LIKE ?
-                    OR content LIKE ?
-              )
-            ORDER BY RANDOM()
-            LIMIT ?
-            """,
-            (subject, f"%{knowledge_point}%", f"%{knowledge_point}%", n),
-        )
+
+        if subject_key == "politics":
+            cursor.execute(
+                """
+                SELECT qp.id, '政治' AS subj, qp.stem, qp.correct_answer
+                FROM questions_politics qp
+                WHERE qp.stem LIKE ?
+                ORDER BY RANDOM()
+                LIMIT ?
+                """,
+                (f"%{knowledge_point}%", n),
+            )
+        elif subject_key == "math":
+            cursor.execute(
+                """
+                SELECT qm.id, '数学' AS subj, qm.stem, NULL AS correct_answer
+                FROM questions_math qm
+                WHERE qm.stem LIKE ?
+                ORDER BY RANDOM()
+                LIMIT ?
+                """,
+                (f"%{knowledge_point}%", n),
+            )
+        elif subject_key == "english":
+            cursor.execute(
+                """
+                SELECT qe.id, '英语' AS subj, qe.content, NULL AS correct_answer
+                FROM questions_english qe
+                WHERE qe.content LIKE ?
+                ORDER BY RANDOM()
+                LIMIT ?
+                """,
+                (f"%{knowledge_point}%", n),
+            )
+        else:
+            conn.close()
+            return []
+
         rows = cursor.fetchall()
         conn.close()
     except sqlite3.Error as exc:
@@ -327,8 +357,8 @@ def _query_questions_by_knowledge_point(
                 subject=row[1],
                 knowledge_point=knowledge_point,
                 content=(row[2] or "")[:200],
-                difficulty_level=row[3],
-                correct_answer=row[4],
+                difficulty_level=None,
+                correct_answer=row[3],
             )
         )
     return results

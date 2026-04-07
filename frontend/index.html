@@ -12,6 +12,19 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   <!-- Chart.js for diagnosis visualization -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- MathJax for LaTeX formula rendering -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <style>
     :root {
       --primary: #1e3a8a;
@@ -172,6 +185,50 @@
     .subject-default { background: #f1f5f9; color: #475569; }
     /* Progress bar for question */
     .question-progress { font-size: 0.75rem; color: var(--text-2); }
+    /* Passage text for English questions */
+    .q-passage {
+      background: #f8faff; border: 1px solid #e2eaff;
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;
+      font-size: 0.82rem; line-height: 1.75; color: #29334a;
+      white-space: pre-wrap; max-height: 220px; overflow-y: auto;
+    }
+    /* Multiple choice options */
+    .q-options { display: grid; gap: 8px; margin-top: 10px; }
+    .q-option {
+      border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; display: grid;
+      grid-template-columns: 30px 1fr; gap: 8px; align-items: start;
+      background: #fff; cursor: pointer; transition: all .15s ease;
+      font-size: 0.85rem; line-height: 1.6;
+    }
+    .q-option:hover { border-color: #b9c8f8; background: #f5f8ff; }
+    .q-option.selected { border-color: #3b82f6; background: #eff6ff; }
+    .q-option.correct  { border-color: #16a34a; background: #f0fdf4; pointer-events: none; }
+    .q-option.wrong    { border-color: #dc2626; background: #fef2f2; pointer-events: none; }
+    .q-option-badge {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #edf2ff; color: #2848b8;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.82rem; flex-shrink: 0;
+    }
+    /* Answer reveal box */
+    .q-answer-box {
+      margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+      background: #ecfdf5; border: 1px solid #bbf7d0;
+      color: #166534; font-size: 0.82rem; display: none;
+    }
+    .q-answer-box.show { display: block; }
+    .q-answer-box.wrong-ans { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+    /* Submit button for options */
+    .q-submit-btn {
+      margin-top: 10px; padding: 7px 18px;
+      border: 1px solid #c7d9f8; border-radius: 8px;
+      background: #f0f5ff; color: #2848b8; font-size: 0.83rem;
+      cursor: pointer; transition: background .15s;
+    }
+    .q-submit-btn:hover { background: #e0e9ff; }
+    /* Question stem */
+    .q-stem { white-space: pre-wrap; font-size: 0.875rem; font-weight: 500; margin-bottom: 4px; }
     /* ── Result panels ───────────────────────────── */
     #result-area {
       border-top: 1px solid var(--border); padding: 10px 16px;
@@ -318,14 +375,17 @@
       <!-- Question display -->
       <div id="question-card">
         <div class="card" style="border-color: var(--border); border-radius: 10px;">
-          <div class="card-header d-flex justify-content-between align-items-center" style="background:var(--surface-2);">
+          <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2" style="background:var(--surface-2);">
             <span class="fw-semibold small"><i class="bi bi-question-circle me-1 text-primary"></i>当前题目</span>
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
               <select id="practice-subject" class="form-select form-select-sm" style="width:auto;">
-                <option value="">全部学科</option>
-                <option value="数学">数学</option>
-                <option value="政治">政治</option>
-                <option value="英语">英语</option>
+                <option value="">选择科目…</option>
+              </select>
+              <select id="practice-type" class="form-select form-select-sm" style="width:auto;">
+                <option value="">题型</option>
+              </select>
+              <select id="practice-year" class="form-select form-select-sm" style="width:auto;">
+                <option value="">全部年份</option>
               </select>
               <button id="next-question-btn" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-right-circle me-1"></i>换题
@@ -333,7 +393,7 @@
             </div>
           </div>
           <div class="card-body" id="question-body">
-            <div class="text-muted small">点击「换题」加载一道题目…</div>
+            <div class="text-muted small">选择科目后点击「换题」加载题目…</div>
           </div>
         </div>
       </div>
@@ -568,6 +628,9 @@ function switchMode(mode) {
   document.getElementById('mode-qa').classList.toggle('hidden', mode !== 'qa');
   document.getElementById('mode-practice').classList.toggle('hidden', mode !== 'practice');
   document.getElementById('mode-diagnosis').classList.toggle('hidden', mode !== 'diagnosis');
+  if (mode === 'practice') {
+    initPracticeSelectors();
+  }
 }
 
 // ============================================================
@@ -575,9 +638,10 @@ function switchMode(mode) {
 // ============================================================
 function subjectTagHtml(subject) {
   if (!subject) return '';
-  const cls = subject === '数学' ? 'subject-math' :
-              subject === '政治' ? 'subject-politics' :
-              subject === '英语' ? 'subject-english' : 'subject-default';
+  const isMath    = subject.includes('数学') || subject === 'math';
+  const isPol     = subject.includes('政治') || subject === 'politics';
+  const isEng     = subject.includes('英语') || subject === 'english';
+  const cls = isMath ? 'subject-math' : isPol ? 'subject-politics' : isEng ? 'subject-english' : 'subject-default';
   return `<span class="subject-tag ${cls}">${escHtml(subject)}</span>`;
 }
 
@@ -777,6 +841,48 @@ function renderResults(citations, recommendations) {
 const practiceInput = document.getElementById('practice-input');
 const practiceSend  = document.getElementById('practice-send');
 const practiceChat  = document.getElementById('practice-chat-box');
+const practiceSubjectSel = document.getElementById('practice-subject');
+const practiceTypeSel    = document.getElementById('practice-type');
+const practiceYearSel    = document.getElementById('practice-year');
+
+// --- Bootstrap selectors from new API ---
+async function initPracticeSelectors() {
+  try {
+    const subjects = await (await fetch(apiUrl('/api/practice/subjects'))).json();
+    practiceSubjectSel.innerHTML = '<option value="">选择科目…</option>' +
+      subjects.map(s => `<option value="${s.id}">${s.icon || ''} ${s.name}</option>`).join('');
+  } catch (e) {
+    console.warn('Failed to load subjects', e);
+  }
+}
+
+async function loadPracticeTypes() {
+  const subject = practiceSubjectSel.value;
+  practiceTypeSel.innerHTML = '<option value="">题型</option>';
+  if (!subject) return;
+  try {
+    const types = await (await fetch(apiUrl(`/api/practice/types/${subject}`))).json();
+    practiceTypeSel.innerHTML = types.map(t =>
+      `<option value="${t.id}">${t.name}</option>`
+    ).join('');
+  } catch (e) { console.warn('Failed to load types', e); }
+}
+
+async function loadPracticeYears() {
+  const subject = practiceSubjectSel.value;
+  practiceYearSel.innerHTML = '<option value="">全部年份</option>';
+  if (!subject) return;
+  try {
+    const years = await (await fetch(apiUrl(`/api/practice/years/${subject}`))).json();
+    practiceYearSel.innerHTML = '<option value="">全部年份</option>' +
+      years.map(y => `<option value="${y}">${y}</option>`).join('');
+  } catch (e) { console.warn('Failed to load years', e); }
+}
+
+practiceSubjectSel.addEventListener('change', async () => {
+  await loadPracticeTypes();
+  await loadPracticeYears();
+});
 
 document.getElementById('next-question-btn').addEventListener('click', loadQuestion);
 practiceInput.addEventListener('keydown', e => {
@@ -786,10 +892,14 @@ practiceSend.addEventListener('click', submitAnswer);
 
 async function loadQuestion() {
   try {
-    const subject = document.getElementById('practice-subject').value;
-    const url = subject
-      ? apiUrl('/api/practice/question') + '?subject=' + encodeURIComponent(subject)
-      : apiUrl('/api/practice/question');
+    const subject = practiceSubjectSel.value;
+    const qtype   = practiceTypeSel.value;
+    const year    = practiceYearSel.value;
+    const params  = new URLSearchParams();
+    if (subject) params.set('subject', subject);
+    if (qtype)   params.set('question_type', qtype);
+    if (year)    params.set('year', year);
+    const url = apiUrl('/api/practice/question') + (params.toString() ? '?' + params.toString() : '');
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const q = await resp.json();
@@ -805,17 +915,164 @@ async function loadQuestion() {
 
 function renderQuestion(q) {
   const body = document.getElementById('question-body');
+
+  // Build the header badges
   const kp = (q.knowledge_points || []).map(k =>
     `<span class="badge bg-light text-dark border me-1">${escHtml(k)}</span>`
   ).join('');
-  body.innerHTML = `
+  const headerHtml = `
     <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
       ${subjectTagHtml(q.subject)}
       ${q.year ? `<span class="badge bg-secondary">${q.year}年</span>` : ''}
       ${q.question_type ? `<span class="badge bg-info text-dark">${escHtml(q.question_type)}</span>` : ''}
       ${kp}
-    </div>
-    <div class="small fw-medium" style="white-space:pre-wrap;">${escHtml(q.content)}</div>`;
+    </div>`;
+
+  // Passage block for English questions
+  const passageHtml = q.passage_text
+    ? `<div class="q-passage">${escHtml(q.passage_text)}</div>`
+    : '';
+
+  // Question stem
+  const stemHtml = `<div class="q-stem">${escHtml(q.content)}</div>`;
+
+  body.innerHTML = headerHtml + passageHtml + stemHtml;
+
+  // --- Material analysis: render sub-questions as an accordion ---
+  const subQs = Array.isArray(q.sub_questions) ? q.sub_questions : [];
+  if (subQs.length > 0) {
+    const subDiv = document.createElement('div');
+    subDiv.className = 'mt-2';
+    subQs.forEach((sq, idx) => {
+      const panel = document.createElement('div');
+      panel.className = 'border rounded p-2 mb-2 small';
+      const numLabel = sq.number ? `第(${sq.number})问 ` : `小问${idx + 1} `;
+      const stemEl = document.createElement('div');
+      stemEl.className = 'fw-semibold mb-1 q-stem';
+      stemEl.textContent = numLabel + (sq.stem || '');
+      panel.appendChild(stemEl);
+
+      if (sq.answer) {
+        const showBtn = document.createElement('button');
+        showBtn.className = 'q-submit-btn mt-1';
+        showBtn.textContent = '查看答案';
+        const ansEl = document.createElement('div');
+        ansEl.className = 'q-answer-box';
+        showBtn.addEventListener('click', () => {
+          ansEl.className = 'q-answer-box show';
+          ansEl.innerHTML = `参考答案：${escHtml(sq.answer)}`;
+          showBtn.disabled = true;
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([ansEl]).catch(() => {});
+          }
+        });
+        panel.appendChild(showBtn);
+        panel.appendChild(ansEl);
+      }
+      subDiv.appendChild(panel);
+    });
+    body.appendChild(subDiv);
+
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([body]).catch(() => {});
+    }
+    return;
+  }
+
+  // --- Options block for multiple-choice questions ---
+  const opts = q.options && typeof q.options === 'object' ? q.options : null;
+  if (opts && Object.keys(opts).length > 0) {
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'q-options';
+
+    const sortedKeys = Object.keys(opts).sort();
+    let answered = false;
+
+    sortedKeys.forEach(key => {
+      const item = document.createElement('div');
+      item.className = 'q-option';
+      item.dataset.key = key;
+
+      const badge = document.createElement('div');
+      badge.className = 'q-option-badge';
+      badge.textContent = key;
+
+      const textEl = document.createElement('div');
+      textEl.style.whiteSpace = 'pre-wrap';
+      textEl.textContent = opts[key];
+
+      item.appendChild(badge);
+      item.appendChild(textEl);
+
+      const isMultiple = (q.question_type || '').includes('多选');
+
+      item.addEventListener('click', () => {
+        if (answered) return;
+        if (isMultiple) {
+          item.classList.toggle('selected');
+        } else {
+          optionsDiv.querySelectorAll('.q-option').forEach(el => el.classList.remove('selected'));
+          item.classList.add('selected');
+        }
+      });
+
+      optionsDiv.appendChild(item);
+    });
+
+    body.appendChild(optionsDiv);
+
+    // Answer box (hidden until submitted)
+    const answerBox = document.createElement('div');
+    answerBox.className = 'q-answer-box';
+    body.appendChild(answerBox);
+
+    // Submit button for inline answer checking
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'q-submit-btn';
+    submitBtn.textContent = '提交选项';
+    submitBtn.addEventListener('click', () => {
+      if (answered) return;
+      const correctAns = (q.correct_answer || '').toUpperCase().split('').sort().join('');
+      const selectedItems = optionsDiv.querySelectorAll('.q-option.selected');
+      if (selectedItems.length === 0) return;
+      answered = true;
+
+      const pickedKeys = Array.from(selectedItems).map(el => el.dataset.key).sort().join('');
+
+      sortedKeys.forEach(key => {
+        const el = optionsDiv.querySelector(`.q-option[data-key="${key}"]`);
+        if (!el) return;
+        el.style.pointerEvents = 'none';
+        if (correctAns.includes(key)) {
+          el.classList.add('correct');
+          el.classList.remove('selected', 'wrong');
+        } else if (el.classList.contains('selected')) {
+          el.classList.add('wrong');
+          el.classList.remove('selected');
+        }
+      });
+
+      const isOk = pickedKeys === correctAns;
+      answerBox.className = 'q-answer-box show' + (isOk ? '' : ' wrong-ans');
+      const resultLine = `参考答案：${escHtml(correctAns || '（暂无）')} ｜ 你的选择：${escHtml(pickedKeys)} ｜ ${isOk ? '✅ 正确' : '❌ 错误'}`;
+      const analysisLine = q.analysis
+        ? `<div class="mt-1" style="white-space:pre-wrap;">解析：${escHtml(q.analysis)}</div>`
+        : '';
+      answerBox.innerHTML = resultLine + analysisLine;
+
+      submitBtn.disabled = true;
+
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([answerBox]).catch(() => {});
+      }
+    });
+    body.appendChild(submitBtn);
+  }
+
+  // Run MathJax over the whole question card after rendering
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise([body]).catch(() => {});
+  }
 }
 
 async function submitAnswer() {
