@@ -104,15 +104,15 @@ def search(query: str, top_k: int = 5, source_table: str = None) -> list:
     Args:
         query:        Natural-language query string.
         top_k:        Number of results to return.
-        source_table: Optional filter; "questions" or "passages".
+        source_table: Optional filter; one of "questions_math",
+                      "questions_politics", "questions_english",
+                      "sub_questions".
 
     Returns:
-        List of dicts.  Questions include keys:
-            doc_id, source_table, id, subject, year, question_type,
-            content, correct_answer, score, vector_id.
-        Passages include keys:
-            doc_id, source_table, id, year, passage_title, content,
+        List of dicts. Each result includes:
+            doc_id, source_table, id, subject, question_type, content,
             score, vector_id.
+        Additional fields where available: year, correct_answer, analysis.
     """
     index, id_map = _load_index()
     query_vec = _get_query_embedding(query)
@@ -138,11 +138,82 @@ def search(query: str, top_k: int = 5, source_table: str = None) -> list:
         if source_table and src_table != source_table:
             continue
 
-        if src_table == "questions":
-            raw_id = int(doc_id[2:])  # "q_5" -> 5
+        try:
+            raw_id = int(doc_id.split("_", 1)[1])  # "qm_5" -> 5, "sq_10" -> 10
+        except (IndexError, ValueError):
+            continue
+
+        if src_table == "questions_math":
             cursor.execute(
-                "SELECT id, subject, year, question_type, content, correct_answer "
-                "FROM questions WHERE id = ?",
+                "SELECT id, question_type, stem FROM questions_math WHERE id = ?",
+                (raw_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "source_table": src_table,
+                        "id": row[0],
+                        "subject": "数学",
+                        "year": None,
+                        "question_type": row[1],
+                        "content": row[2],
+                        "score": float(score),
+                        "vector_id": int(idx),
+                    }
+                )
+
+        elif src_table == "questions_politics":
+            cursor.execute(
+                "SELECT id, year, question_type, stem, correct_answer, analysis "
+                "FROM questions_politics WHERE id = ?",
+                (raw_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "source_table": src_table,
+                        "id": row[0],
+                        "subject": "政治",
+                        "year": row[1],
+                        "question_type": row[2],
+                        "content": row[3],
+                        "correct_answer": row[4],
+                        "analysis": row[5],
+                        "score": float(score),
+                        "vector_id": int(idx),
+                    }
+                )
+
+        elif src_table == "questions_english":
+            cursor.execute(
+                "SELECT id, year, question_type, content "
+                "FROM questions_english WHERE id = ?",
+                (raw_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                results.append(
+                    {
+                        "doc_id": doc_id,
+                        "source_table": src_table,
+                        "id": row[0],
+                        "subject": "英语",
+                        "year": row[1],
+                        "question_type": row[2],
+                        "content": row[3],
+                        "score": float(score),
+                        "vector_id": int(idx),
+                    }
+                )
+
+        elif src_table == "sub_questions":
+            cursor.execute(
+                "SELECT id, subject_type, question_id, question_number, stem, answer, analysis "
+                "FROM sub_questions WHERE id = ?",
                 (raw_id,),
             )
             row = cursor.fetchone()
@@ -153,31 +224,13 @@ def search(query: str, top_k: int = 5, source_table: str = None) -> list:
                         "source_table": src_table,
                         "id": row[0],
                         "subject": row[1],
-                        "year": row[2],
-                        "question_type": row[3],
+                        "year": None,
+                        "question_type": None,
                         "content": row[4],
-                        "correct_answer": row[5],
-                        "score": float(score),
-                        "vector_id": int(idx),
-                    }
-                )
-        elif src_table == "passages":
-            raw_id = int(doc_id[2:])  # "p_3" -> 3
-            cursor.execute(
-                "SELECT id, year, passage_title, passage_text "
-                "FROM passages WHERE id = ?",
-                (raw_id,),
-            )
-            row = cursor.fetchone()
-            if row:
-                results.append(
-                    {
-                        "doc_id": doc_id,
-                        "source_table": src_table,
-                        "id": row[0],
-                        "year": row[1],
-                        "passage_title": row[2],
-                        "content": row[3],
+                        "question_id": row[2],
+                        "question_number": row[3],
+                        "answer": row[5],
+                        "analysis": row[6],
                         "score": float(score),
                         "vector_id": int(idx),
                     }
@@ -202,7 +255,7 @@ def _parse_args():
     parser.add_argument(
         "--source-table",
         default=None,
-        choices=["questions", "passages"],
+        choices=["questions_math", "questions_politics", "questions_english", "sub_questions"],
         help="Restrict results to a specific source table.",
     )
     return parser.parse_args()

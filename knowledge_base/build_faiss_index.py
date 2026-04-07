@@ -1,5 +1,5 @@
 """
-Build a FAISS vector index from questions and passages in knowledge_base.db.
+Build a FAISS vector index from questions in knowledge_base.db.
 
 Usage:
     python knowledge_base/build_faiss_index.py [--subject 政治] [--batch-size 32]
@@ -11,7 +11,15 @@ Environment variables:
 The script supports incremental (checkpoint) builds: already-indexed documents
 (those whose doc_id already appears in the saved id_map.json) are skipped.
 
-id_map.json format: list of dicts {"doc_id": "q_<id>" | "p_<id>", "source_table": "questions" | "passages"}
+Tables indexed (new schema):
+    questions_math      — math questions      (doc_id prefix: qm_<id>)
+    questions_politics  — politics questions  (doc_id prefix: qp_<id>)
+    questions_english   — English questions   (doc_id prefix: qe_<id>)
+    sub_questions       — sub-questions       (doc_id prefix: sq_<id>)
+
+id_map.json format: list of dicts
+    {"doc_id": "qm_<id>" | "qp_<id>" | "qe_<id>" | "sq_<id>",
+     "source_table": "questions_math" | "questions_politics" | "questions_english" | "sub_questions"}
 """
 
 import argparse
@@ -60,6 +68,24 @@ EMBEDDING_DIM = 1024  # bge-m3 output dimension
 DEFAULT_BATCH_SIZE = 32
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 5  # seconds
+
+# ---------------------------------------------------------------------------
+# Table configurations for the new normalized schema
+# ---------------------------------------------------------------------------
+# Each entry: (table_name, text_column, doc_id_prefix)
+QUESTION_TABLES = [
+    ("questions_math",     "stem",    "qm"),
+    ("questions_politics", "stem",    "qp"),
+    ("questions_english",  "content", "qe"),
+    ("sub_questions",      "stem",    "sq"),
+]
+
+# Map subject name → tables to index for that subject
+SUBJECT_TO_TABLES = {
+    "数学": [("questions_math",     "stem",    "qm")],
+    "政治": [("questions_politics", "stem",    "qp")],
+    "英语": [("questions_english",  "content", "qe")],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -164,8 +190,7 @@ def build_index(
 
     Args:
         subject:    Filter by subject (e.g. '政治', '数学', '英语').
-                    *None* means all subjects; passages are always indexed
-                    unless subject is set to a non-English value.
+                    *None* means all subjects (all four question tables).
         batch_size: Number of documents sent to the embedding API per request.
         api_key:    Override SILICONFLOW_API_KEY env var.
         api_url:    Override SILICONFLOW_API_URL env var.
@@ -177,44 +202,44 @@ def build_index(
     index, id_map = load_or_create_index()
     indexed_ids: set = {entry["doc_id"] for entry in id_map}
 
-    # Fetch active questions that have content
-    q_query = (
-        "SELECT id, content FROM questions "
-        "WHERE is_active = 1 AND content IS NOT NULL"
-    )
-    q_params: list = []
+    # Determine which tables to query based on subject filter
     if subject:
-        q_query += " AND subject = ?"
-        q_params.append(subject)
-    q_query += " ORDER BY id"
+        tables = SUBJECT_TO_TABLES.get(subject, [])
+        if not tables:
+            print(
+                f"[warn] Unknown subject {subject!r}. "
+                f"Valid values: {list(SUBJECT_TO_TABLES)}"
+            )
+            conn.close()
+            return
+    else:
+        tables = QUESTION_TABLES
 
-    cursor.execute(q_query, q_params)
-    q_rows = cursor.fetchall()
-
-    # Fetch passages (English reading articles).
-    # Skip when a non-English subject filter is explicitly set.
-    p_rows = []
-    if subject is None or subject == "英语":
-        cursor.execute(
-            "SELECT id, passage_text FROM passages "
-            "WHERE passage_text IS NOT NULL ORDER BY id"
-        )
-        p_rows = cursor.fetchall()
-
-    # Build combined list of (doc_id, text, source_table, raw_db_id) to index
+    # Build combined list of (doc_id, text, source_table, raw_db_id) to index.
+    # Validate table_name and text_col against the allowlist before use in SQL.
+    _allowed_tables = {t[0] for t in QUESTION_TABLES}
+    _allowed_cols = {t[1] for t in QUESTION_TABLES}
     to_index = []
-    for qid, content in q_rows:
-        doc_id = f"q_{qid}"
-        if doc_id not in indexed_ids:
-            to_index.append((doc_id, content, "questions", qid))
-    for pid, text in p_rows:
-        doc_id = f"p_{pid}"
-        if doc_id not in indexed_ids:
-            to_index.append((doc_id, text, "passages", pid))
+    total_fetched = 0
+    for table_name, text_col, doc_prefix in tables:
+        if table_name not in _allowed_tables or text_col not in _allowed_cols:
+            raise ValueError(
+                f"Unexpected table/column ({table_name!r}, {text_col!r}) — "
+                "must be declared in QUESTION_TABLES."
+            )
+        cursor.execute(
+            f"SELECT id, {text_col} FROM {table_name} "
+            f"WHERE {text_col} IS NOT NULL ORDER BY id"
+        )
+        rows = cursor.fetchall()
+        total_fetched += len(rows)
+        for row_id, text in rows:
+            doc_id = f"{doc_prefix}_{row_id}"
+            if doc_id not in indexed_ids:
+                to_index.append((doc_id, text, table_name, row_id))
 
     print(
-        f"Total active questions: {len(q_rows)} "
-        f"| Total passages: {len(p_rows)} "
+        f"Total questions fetched: {total_fetched} "
         f"| Already indexed: {len(indexed_ids)} "
         f"| To index now: {len(to_index)}"
     )
@@ -253,18 +278,6 @@ def build_index(
             for doc_id, src in zip(batch_doc_ids, batch_sources)
         ]
         id_map.extend(new_entries)
-
-        # Back-fill vector_id in the questions table only
-        q_updates = [
-            (str(start_vid + i), raw_id)
-            for i, (src, raw_id) in enumerate(zip(batch_sources, batch_raw_ids))
-            if src == "questions"
-        ]
-        if q_updates:
-            cursor.executemany(
-                "UPDATE questions SET vector_id = ? WHERE id = ?", q_updates
-            )
-            conn.commit()
 
         # Checkpoint: save after every batch so progress is not lost on error
         save_index(index, id_map)
