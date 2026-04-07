@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from agents.quiz_agent import MOCK_MATH_QUESTIONS, run_quiz
 from backend.config import Settings, get_settings
+from backend.database.db_manager import get_userdata_db_path, init_db
 
 logger = logging.getLogger(__name__)
 
@@ -149,62 +150,63 @@ class PracticeResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 内部工具：quiz_records 持久化 (quiz_records table is part of new schema)
+# 内部工具：quiz_records 持久化（写入 userdata.db）
 # ---------------------------------------------------------------------------
 
-_quiz_records_table_ensured: bool = False
+# userdata.db 路径（由 db_manager 统一管理，支持环境变量覆盖）
+_USERDATA_DB_PATH: Optional[Path] = None
 
 
-def _ensure_quiz_records_table() -> None:
-    """确保 quiz_records 表存在（新 DB 已含该表，这里做保底创建）。"""
-    global _quiz_records_table_ensured
-    if _quiz_records_table_ensured or not _DB_PATH.exists():
-        return
-    try:
-        with sqlite3.connect(str(_DB_PATH)) as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS quiz_records (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    question_id INTEGER,
-                    subject TEXT,
-                    knowledge_point TEXT,
-                    is_correct INTEGER,
-                    answered_at TEXT
-                )
-                """
-            )
-            conn.commit()
-        _quiz_records_table_ensured = True
-    except sqlite3.Error as exc:
-        logger.warning("Failed to ensure quiz_records table: %s", exc)
+def _get_userdata_db_path() -> Path:
+    """获取 userdata.db 路径，并在首次调用时初始化数据库表。"""
+    global _USERDATA_DB_PATH
+    if _USERDATA_DB_PATH is None:
+        try:
+            init_db()
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to initialize userdata.db: %s", exc)
+        _USERDATA_DB_PATH = Path(get_userdata_db_path())
+    return _USERDATA_DB_PATH
 
 
 def _save_quiz_record(
     user_id: str,
     question: dict[str, Any],
     is_correct: Optional[bool],
+    user_answer: Optional[str] = None,
+    score: Optional[float] = None,
+    feedback: Optional[str] = None,
 ) -> None:
-    """将一条做题结果保存到 quiz_records 表。"""
-    if not _DB_PATH.exists():
-        return
+    """将一条做题结果保存到 userdata.db 的 quiz_records 表。"""
+    db_path = _get_userdata_db_path()
+    if not db_path.exists():
+        # 尝试再次初始化
+        try:
+            init_db()
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to initialize userdata.db on save: %s", exc)
+            return
     try:
-        _ensure_quiz_records_table()
         kps: list[str] = question.get("knowledge_points") or []
         knowledge_point = kps[0] if kps else question.get("knowledge_point", "")
         is_correct_val: Optional[int] = None if is_correct is None else (1 if is_correct else 0)
-        with sqlite3.connect(str(_DB_PATH)) as conn:
+        year_val: Optional[int] = question.get("year")
+        with sqlite3.connect(str(db_path)) as conn:
             conn.execute(
                 "INSERT INTO quiz_records"
-                "(user_id, question_id, subject, knowledge_point, is_correct, answered_at)"
-                " VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                " (user_id_str, question_id, subject, year, knowledge_point,"
+                "  is_correct, score, user_answer, feedback, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
                 (
                     user_id,
                     question.get("id"),
                     question.get("subject", ""),
+                    year_val,
                     knowledge_point,
                     is_correct_val,
+                    score,
+                    user_answer,
+                    feedback,
                 ),
             )
             conn.commit()
@@ -629,7 +631,14 @@ async def practice(req: PracticeRequest, settings: SettingsDep) -> PracticeRespo
         raise HTTPException(status_code=500, detail=f"刷题处理失败：{exc}") from exc
 
     grade = state.get("grade_result") or {}
-    _save_quiz_record(req.user_id, question, grade.get("is_correct"))
+    _save_quiz_record(
+        req.user_id,
+        question,
+        grade.get("is_correct"),
+        user_answer=req.user_answer or req.user_input,
+        score=grade.get("score"),
+        feedback=grade.get("feedback"),
+    )
     return PracticeResponse(
         grade_result=GradeResultOut(
             is_correct=grade.get("is_correct"),
@@ -674,6 +683,14 @@ async def practice_stream(req: PracticeRequest, settings: SettingsDep) -> Stream
     grade = state.get("grade_result") or {}
     explanation = state.get("explanation") or ""
     followups = state.get("followup_questions") or []
+    _save_quiz_record(
+        req.user_id,
+        question,
+        grade.get("is_correct"),
+        user_answer=req.user_answer or req.user_input,
+        score=grade.get("score"),
+        feedback=grade.get("feedback"),
+    )
 
     async def _generate() -> AsyncGenerator[str, None]:
         # 首帧：批改元数据
