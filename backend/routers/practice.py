@@ -32,6 +32,28 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/practice", tags=["practice"])
 
+
+def _build_llm(settings: Settings) -> Any:
+    """配置了 SiliconFlow API Key 时，构建 LangChain ChatOpenAI 实例。
+
+    不传 API Key 时返回 None，让 Quiz Agent 降级为规则批改。
+    """
+    if not settings.siliconflow_api_key:
+        return None
+    try:
+        from langchain_openai import ChatOpenAI  # pylint: disable=import-outside-toplevel
+
+        return ChatOpenAI(
+            model=settings.llm_model,
+            openai_api_key=settings.siliconflow_api_key,
+            openai_api_base=settings.llm_base_url,
+            temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.warning("Failed to build LLM for quiz grading: %s", exc)
+        return None
+
 # ---------------------------------------------------------------------------
 # 数据库路径（与 diagnosis_agent 保持一致，支持环境变量覆盖）
 # ---------------------------------------------------------------------------
@@ -615,6 +637,7 @@ async def practice(req: PracticeRequest, settings: SettingsDep) -> PracticeRespo
         question = MOCK_MATH_QUESTIONS[0]
 
     try:
+        llm = _build_llm(settings)
         state = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: run_quiz(
@@ -624,6 +647,7 @@ async def practice(req: PracticeRequest, settings: SettingsDep) -> PracticeRespo
                 messages=req.messages or None,
                 quiz_history=req.quiz_history or None,
                 params=req.params or None,
+                llm=llm,
             ),
         )
     except Exception as exc:
@@ -665,6 +689,7 @@ async def practice_stream(req: PracticeRequest, settings: SettingsDep) -> Stream
     question = req.current_question or MOCK_MATH_QUESTIONS[0]
 
     try:
+        llm = _build_llm(settings)
         state = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: run_quiz(
@@ -674,6 +699,7 @@ async def practice_stream(req: PracticeRequest, settings: SettingsDep) -> Stream
                 messages=req.messages or None,
                 quiz_history=req.quiz_history or None,
                 params=req.params or None,
+                llm=llm,
             ),
         )
     except Exception as exc:

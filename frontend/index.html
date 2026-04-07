@@ -1062,7 +1062,7 @@ function renderQuestion(q) {
     const submitBtn = document.createElement('button');
     submitBtn.className = 'q-submit-btn';
     submitBtn.textContent = '提交选项';
-    submitBtn.addEventListener('click', () => {
+    submitBtn.addEventListener('click', async () => {
       if (answered) return;
       const correctAns = (q.correct_answer || '').toUpperCase().split('').sort().join('');
       const selectedItems = optionsDiv.querySelectorAll('.q-option.selected');
@@ -1096,6 +1096,29 @@ function renderQuestion(q) {
 
       if (window.MathJax && window.MathJax.typesetPromise) {
         window.MathJax.typesetPromise([answerBox]).catch(() => {});
+      }
+
+      // Submit to backend for AI scoring and answer record saving
+      try {
+        const resp = await fetch(apiUrl('/api/practice'), {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            user_input: pickedKeys,
+            current_question: state.currentQuestion,
+            user_answer: pickedKeys,
+            messages: state.practiceMessages,
+            quiz_history: state.quizHistory,
+          }),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          state.practiceMessages = data.messages;
+          state.quizHistory = data.quiz_history;
+          renderGradeResult(data.grade_result, data.followup_questions);
+        }
+      } catch (err) {
+        console.warn('Backend grading failed:', err);
       }
     });
     body.appendChild(submitBtn);
