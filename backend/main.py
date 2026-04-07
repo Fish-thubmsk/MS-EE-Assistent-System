@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import get_settings
+from backend.database.db_manager import init_db
 from backend.routers.answer import router as answer_router
 from backend.routers.chat import router as chat_router
 from backend.routers.diagnosis import router as diagnosis_router
@@ -21,6 +22,12 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# 初始化用户数据库（幂等，已存在不重建）
+try:
+    init_db()
+except Exception as _db_exc:  # pragma: no cover
+    logger.warning("userdata.db initialization failed: %s", _db_exc)
 
 app = FastAPI(
     title=settings.app_title,

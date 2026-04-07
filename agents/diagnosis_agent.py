@@ -42,11 +42,21 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(os.environ.get("REPO_ROOT", os.getcwd()))
+# knowledge_base.db — 只读题库（politics/math/english 题目）
 _DB_PATH = Path(
     os.path.abspath(
         os.environ.get(
             "KNOWLEDGE_DB_PATH",
             str(_REPO_ROOT / "datebase" / "knowledge_base.db"),
+        )
+    )
+)
+# userdata.db — 可读写用户数据（quiz_records 等）
+_USERDATA_DB_PATH = Path(
+    os.path.abspath(
+        os.environ.get(
+            "USERDATA_DB_PATH",
+            str(_REPO_ROOT / "datebase" / "userdata.db"),
         )
     )
 )
@@ -140,23 +150,23 @@ def _load_db_history(
     db_path: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """
-    从 quiz_records 表读取用户真实做题历史。
+    从 userdata.db 的 quiz_records 表读取用户真实做题历史。
 
     Args:
-        user_id: 用户 ID。
+        user_id: 用户 ID（字符串，对应 user_id_str 列）。
         subject: 可选学科过滤。
-        db_path: SQLite 数据库路径（默认使用 _DB_PATH）。
+        db_path: SQLite 数据库路径（默认使用 _USERDATA_DB_PATH）。
 
     Returns:
         做题记录列表，表不存在或无记录时返回空列表。
     """
-    path = Path(db_path) if db_path else _DB_PATH
+    path = Path(db_path) if db_path else _USERDATA_DB_PATH
     if not path.exists():
         return []
     try:
         # `conditions` contains only hardcoded literal SQL fragments; user values are
         # always bound via parameterised placeholders (`params`) to prevent SQL injection.
-        conditions = ["user_id = ?"]
+        conditions = ["user_id_str = ?"]
         params: list[Any] = [user_id]
         if subject:
             conditions.append("subject = ?")
@@ -164,7 +174,7 @@ def _load_db_history(
         where = " AND ".join(conditions)
         with sqlite3.connect(str(path)) as conn:
             cursor = conn.execute(
-                f"SELECT question_id, subject, knowledge_point, is_correct, answered_at"
+                f"SELECT question_id, subject, knowledge_point, is_correct, created_at"
                 f" FROM quiz_records WHERE {where}",
                 params,
             )
