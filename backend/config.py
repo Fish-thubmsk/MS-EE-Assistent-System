@@ -100,8 +100,33 @@ class Settings(BaseSettings):
     )
     log_level: str = Field(default="INFO", description="日志级别")
 
+    # -----------------------------------------------------------------------
+    # JWT 认证
+    # -----------------------------------------------------------------------
+    jwt_secret_key: str = Field(
+        default="",
+        description="JWT 签名密钥（生产环境必须通过 JWT_SECRET_KEY 环境变量配置强随机字符串）",
+    )
+    jwt_algorithm: str = Field(default="HS256", description="JWT 签名算法")
+    jwt_expire_minutes: int = Field(default=60 * 24, description="JWT 有效期（分钟），默认 24 小时")
+
+
+import logging as _logging  # noqa: E402
+import secrets as _secrets  # noqa: E402
+
+_config_logger = _logging.getLogger(__name__)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """返回全局单例 Settings 对象（生产/测试均可用 dependency override 替换）。"""
-    return Settings()
+    s = Settings()
+    if not s.jwt_secret_key:
+        # 未配置 JWT_SECRET_KEY：运行时生成随机密钥（仅用于开发，重启后 Token 失效）
+        _config_logger.warning(
+            "JWT_SECRET_KEY not set. A random ephemeral key will be used. "
+            "Tokens will be invalidated on restart. "
+            "Set JWT_SECRET_KEY in .env for persistent authentication."
+        )
+        return s.model_copy(update={"jwt_secret_key": _secrets.token_hex(32)})
+    return s

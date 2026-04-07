@@ -97,10 +97,53 @@ def get_db() -> Session:
 
 def init_db() -> None:
     """
-    初始化 userdata.db：创建所有 ORM 模型对应的表（幂等，已存在不重建）。
+    初始化 userdata.db：创建所有 ORM 模型对应的表（幂等，已存在不重建），
+    并插入演示用户（若不存在）。
 
     建议在应用启动时调用一次。
     """
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
     logger.info("userdata.db initialized at %s", get_userdata_db_path())
+    _seed_demo_users()
+
+
+# ---------------------------------------------------------------------------
+# 演示用户种子数据
+# ---------------------------------------------------------------------------
+
+_DEMO_USERS = [
+    {"username": "user_001", "password": "exam2024", "display_name": "同学甲"},
+    {"username": "user_002", "password": "exam2024", "display_name": "同学乙"},
+    {"username": "user_003", "password": "exam2024", "display_name": "同学丙"},
+]
+
+
+def _seed_demo_users() -> None:
+    """插入演示账号（若数据库中尚不存在）。密码使用 bcrypt 哈希存储。"""
+    try:
+        import bcrypt as _bcrypt  # lazy import to avoid hard dep at module load
+
+        from backend.database.models import User
+
+        session = get_session_factory()()
+        try:
+            for demo in _DEMO_USERS:
+                exists = session.query(User).filter(User.username == demo["username"]).first()
+                if not exists:
+                    password_hash = _bcrypt.hashpw(
+                        demo["password"].encode(), _bcrypt.gensalt()
+                    ).decode()
+                    session.add(
+                        User(
+                            username=demo["username"],
+                            password_hash=password_hash,
+                            display_name=demo["display_name"],
+                        )
+                    )
+            session.commit()
+            logger.info("Demo users seeded (or already present).")
+        finally:
+            session.close()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Demo user seeding failed: %s", exc)
