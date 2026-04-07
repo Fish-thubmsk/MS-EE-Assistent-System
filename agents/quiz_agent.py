@@ -104,6 +104,48 @@ class QuizState(TypedDict):
 
 
 # ---------------------------------------------------------------------------
+# Helper: robust JSON extraction from LLM output
+# ---------------------------------------------------------------------------
+
+
+def _try_parse_json(text: str) -> Optional[dict[str, Any]]:
+    """尝试从 LLM 输出中提取 JSON 对象，支持多种格式。
+
+    策略（按优先级）：
+    1. 直接解析整个文本
+    2. 提取 Markdown 代码块中的 JSON
+    3. 使用 json.JSONDecoder.raw_decode 找到第一个完整 JSON 对象
+    """
+    # Strategy 1: try the whole text
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 2: extract from markdown code block
+    code_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if code_block:
+        try:
+            return json.loads(code_block.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Strategy 3: find the first valid JSON object using raw_decode
+    decoder = json.JSONDecoder()
+    start = text.find("{")
+    while start != -1:
+        try:
+            obj, _ = decoder.raw_decode(text, start)
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            pass
+        start = text.find("{", start + 1)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Teacher Agent
 # ---------------------------------------------------------------------------
 
@@ -269,18 +311,11 @@ class TeacherAgent:
         try:
             resp = self._llm.invoke(prompt)
             text = getattr(resp, "content", str(resp)).strip()
-            # Try JSON parsing first (handle markdown code blocks)
-            json_text = text
-            code_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-            if code_block:
-                json_text = code_block.group(1)
-            else:
-                json_match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-                if json_match:
-                    json_text = json_match.group()
-            try:
-                parsed = json.loads(json_text)
+            # Try JSON parsing with multiple strategies for robustness
+            parsed = _try_parse_json(text)
+            if parsed is not None:
                 is_correct_val = parsed.get("is_correct")
+                # JSON booleans come as Python bool; also handle string fallback
                 if isinstance(is_correct_val, str):
                     is_correct_val = is_correct_val.lower() in ("true", "是", "正确")
                 score_val = parsed.get("score")
@@ -294,8 +329,6 @@ class TeacherAgent:
                     "score": score_val,
                     "feedback": str(parsed.get("feedback", "")),
                 }
-            except (json.JSONDecodeError, KeyError, TypeError):
-                pass
             # Fallback to line-based parsing
             result: dict[str, Any] = {"is_correct": None, "score": None, "feedback": ""}
             for line in text.splitlines():
