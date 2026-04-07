@@ -959,11 +959,16 @@ function renderQuestion(q) {
         const ansEl = document.createElement('div');
         ansEl.className = 'q-answer-box';
         showBtn.addEventListener('click', () => {
-          ansEl.className = 'q-answer-box show';
-          ansEl.innerHTML = `参考答案：${escHtml(sq.answer)}`;
-          showBtn.disabled = true;
-          if (window.MathJax && window.MathJax.typesetPromise) {
-            window.MathJax.typesetPromise([ansEl]).catch(() => {});
+          if (ansEl.classList.contains('show')) {
+            ansEl.classList.remove('show');
+            showBtn.textContent = '查看答案';
+          } else {
+            ansEl.className = 'q-answer-box show';
+            ansEl.innerHTML = `参考答案：${escHtml(sq.answer)}`;
+            showBtn.textContent = '隐藏答案';
+            if (window.MathJax && window.MathJax.typesetPromise) {
+              window.MathJax.typesetPromise([ansEl]).catch(() => {});
+            }
           }
         });
         panel.appendChild(showBtn);
