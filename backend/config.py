@@ -58,8 +58,8 @@ class Settings(BaseSettings):
     # Embedding
     # -----------------------------------------------------------------------
     embedding_model: str = Field(
-        default="BAAI/bge-m3",
-        description="Embedding 模型名称",
+        default="Qwen/Qwen3-Embedding-8B",
+        description="Embedding 模型名称（必须与 .env 中的 EMBEDDING_MODEL 匹配，影响 EMBEDDING_DIM）",
     )
     embedding_base_url: str = Field(
         default="https://api.siliconflow.cn/v1",
