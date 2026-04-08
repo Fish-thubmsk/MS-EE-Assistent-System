@@ -80,9 +80,9 @@ def _parse_embedding_dim() -> int:
 
 EMBEDDING_DIM = _parse_embedding_dim()
 
-DEFAULT_BATCH_SIZE = 32
-MAX_RETRIES = 3
-RETRY_BASE_DELAY = 5  # seconds
+DEFAULT_BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
+MAX_RETRIES = int(os.getenv("SF_MAX_RETRIES", "3"))
+RETRY_BASE_DELAY = float(os.getenv("RETRY_BASE_DELAY", "5"))  # seconds
 
 # ---------------------------------------------------------------------------
 # Table configurations for the new normalized schema

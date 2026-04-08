@@ -20,6 +20,7 @@ import faiss
 import numpy as np
 import requests
 from dotenv import load_dotenv
+from utils.sf_retry import get_sf_timeout
 
 load_dotenv()
 
@@ -71,7 +72,7 @@ def _get_query_embedding(text: str) -> np.ndarray:
         "input": [text],
         "encoding_format": "float",
     }
-    resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=30)
+    resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=get_sf_timeout())
     resp.raise_for_status()
     vec = np.array([resp.json()["data"][0]["embedding"]], dtype=np.float32)
     faiss.normalize_L2(vec)

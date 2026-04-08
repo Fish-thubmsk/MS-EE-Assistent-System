@@ -36,9 +36,9 @@ router = APIRouter(prefix="/api/answer", tags=["answer"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 # Maximum number of historical messages included in streaming prompt context
-_MAX_HISTORY_MESSAGES = 6
+_MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "6"))
 # Delay between streamed characters in mock mode (seconds)
-_STREAM_CHAR_DELAY = 0.01
+_STREAM_CHAR_DELAY = float(os.getenv("STREAM_CHAR_DELAY", "0.01"))
 
 
 def get_optional_chroma_manager() -> Optional[Any]:

@@ -134,6 +134,38 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", description="JWT 签名算法")
     jwt_expire_minutes: int = Field(default=60 * 24, description="JWT 有效期（分钟），默认 24 小时")
 
+    # -----------------------------------------------------------------------
+    # RAG & 检索配置
+    # -----------------------------------------------------------------------
+    default_n_faiss: int = Field(
+        default=5,
+        description="FAISS 检索默认返回结果数",
+    )
+    default_n_chroma: int = Field(
+        default=3,
+        description="Chroma 检索默认返回结果数",
+    )
+    max_history_messages: int = Field(
+        default=6,
+        description="对话历史保留的最大消息条数",
+    )
+    stream_char_delay: float = Field(
+        default=0.01,
+        description="SSE 流式输出的字符延迟（秒），用于演示效果",
+    )
+    mock_history_path: str = Field(
+        default="mock_notes/mock_user_history.json",
+        description="Mock 用户历史数据路径",
+    )
+    batch_size: int = Field(
+        default=32,
+        description="Embedding API 批处理大小",
+    )
+    retry_base_delay: float = Field(
+        default=5.0,
+        description="重试基础延迟（秒），用于指数退避",
+    )
+
 
 import logging as _logging  # noqa: E402
 import secrets as _secrets  # noqa: E402

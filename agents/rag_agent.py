@@ -36,9 +36,9 @@ logger = logging.getLogger(__name__)
 # 常量
 # ---------------------------------------------------------------------------
 
-SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-DEFAULT_N_FAISS = 5
-DEFAULT_N_CHROMA = 3
+SILICONFLOW_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1")
+DEFAULT_N_FAISS = int(os.getenv("DEFAULT_N_FAISS", "5"))
+DEFAULT_N_CHROMA = int(os.getenv("DEFAULT_N_CHROMA", "3"))
 
 # ---------------------------------------------------------------------------
 # RAG 状态定义
