@@ -74,8 +74,8 @@ class Settings(BaseSettings):
         description="ChromaDB 持久化目录路径",
     )
     chroma_collection_name: str = Field(
-        default="notes",
-        description="ChromaDB 集合名称",
+        default="user_notes",
+        description="ChromaDB 集合名称（默认 user_notes，与 chroma_manager.py 的历史默认值保持一致）",
     )
 
     # -----------------------------------------------------------------------

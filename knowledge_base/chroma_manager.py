@@ -35,7 +35,9 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
 DEFAULT_CHROMA_DIR = os.path.abspath(
     os.environ.get("CHROMA_PERSIST_DIRECTORY", os.path.join(os.getcwd(), "chroma_userdata"))
 )
-DEFAULT_COLLECTION = os.environ.get("CHROMA_COLLECTION_NAME", "notes")
+# Preserve the original default "user_notes" for backward compatibility;
+# overrideable via CHROMA_COLLECTION_NAME env var.
+DEFAULT_COLLECTION = os.environ.get("CHROMA_COLLECTION_NAME", "user_notes")
 
 
 # ---------------------------------------------------------------------------

@@ -185,12 +185,30 @@ def _call_siliconflow_llm(
             "LLM 模型名称未配置，请设置环境变量 LLM_MODEL（推荐：deepseek-ai/DeepSeek-V3）。"
         )
     _timeout = timeout if timeout is not None else get_sf_timeout()
-    _temperature = temperature if temperature is not None else float(
-        os.environ.get("LLM_TEMPERATURE", "0.3")
-    )
-    _max_tokens = max_tokens if max_tokens is not None else int(
-        os.environ.get("LLM_MAX_TOKENS", "2048")
-    )
+    if temperature is not None:
+        _temperature = temperature
+    else:
+        _raw_temp = os.environ.get("LLM_TEMPERATURE", "0.3")
+        try:
+            _temperature = float(_raw_temp)
+        except (ValueError, TypeError):
+            logger.warning(
+                "LLM_TEMPERATURE 的值 %r 无效（应为浮点数），使用默认值 0.3。", _raw_temp
+            )
+            _temperature = 0.3
+    if max_tokens is not None:
+        _max_tokens = max_tokens
+    else:
+        _raw_mt = os.environ.get("LLM_MAX_TOKENS", "2048")
+        try:
+            _max_tokens = int(_raw_mt)
+            if _max_tokens <= 0:
+                raise ValueError("must be positive")
+        except (ValueError, TypeError):
+            logger.warning(
+                "LLM_MAX_TOKENS 的值 %r 无效（应为正整数），使用默认值 2048。", _raw_mt
+            )
+            _max_tokens = 2048
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",

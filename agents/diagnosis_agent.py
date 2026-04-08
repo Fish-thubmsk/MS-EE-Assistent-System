@@ -69,10 +69,58 @@ _MOCK_HISTORY_PATH = Path(
     )
 )
 
+def _parse_env_float(name: str, default: float, min_val: float = None, max_val: float = None) -> float:
+    """从环境变量读取 float，失败时记录警告并使用默认值。"""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except (ValueError, TypeError):
+        logger.warning(
+            "环境变量 %s 的值 %r 无效（应为浮点数），将使用默认值 %s。", name, raw, default
+        )
+        return default
+    if min_val is not None and value < min_val:
+        logger.warning(
+            "环境变量 %s 的值 %.4f 超出范围（最小值 %s），将使用默认值 %s。",
+            name, value, min_val, default,
+        )
+        return default
+    if max_val is not None and value > max_val:
+        logger.warning(
+            "环境变量 %s 的值 %.4f 超出范围（最大值 %s），将使用默认值 %s。",
+            name, value, max_val, default,
+        )
+        return default
+    return value
+
+
+def _parse_env_int(name: str, default: int, min_val: int = None) -> int:
+    """从环境变量读取正整数，失败时记录警告并使用默认值。"""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (ValueError, TypeError):
+        logger.warning(
+            "环境变量 %s 的值 %r 无效（应为整数），将使用默认值 %s。", name, raw, default
+        )
+        return default
+    if min_val is not None and value < min_val:
+        logger.warning(
+            "环境变量 %s 的值 %d 超出范围（最小值 %d），将使用默认值 %s。",
+            name, value, min_val, default,
+        )
+        return default
+    return value
+
+
 # 薄弱点判定阈值（准确率低于此值视为薄弱），可通过 DIAGNOSIS_WEAK_THRESHOLD 环境变量覆盖
-WEAK_THRESHOLD: float = float(os.environ.get("DIAGNOSIS_WEAK_THRESHOLD", "0.6"))
+WEAK_THRESHOLD: float = _parse_env_float("DIAGNOSIS_WEAK_THRESHOLD", 0.6, min_val=0.0, max_val=1.0)
 # 每个薄弱点推荐题目数，可通过 DIAGNOSIS_RECOMMEND_PER_POINT 环境变量覆盖
-RECOMMEND_PER_POINT: int = int(os.environ.get("DIAGNOSIS_RECOMMEND_PER_POINT", "3"))
+RECOMMEND_PER_POINT: int = _parse_env_int("DIAGNOSIS_RECOMMEND_PER_POINT", 3, min_val=1)
 
 # ---------------------------------------------------------------------------
 # LangGraph 状态定义

@@ -63,7 +63,22 @@ SILICONFLOW_API_URL = os.getenv(
     "SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/embeddings"
 )
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
-EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
+
+def _parse_embedding_dim() -> int:
+    """从 EMBEDDING_DIM 环境变量读取维度，失败时使用默认值 1024。"""
+    raw = os.environ.get("EMBEDDING_DIM", "1024")
+    try:
+        value = int(raw)
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+    except (ValueError, TypeError):
+        print(
+            f"[warn] EMBEDDING_DIM 的值 {raw!r} 无效（应为正整数），使用默认值 1024。"
+        )
+        return 1024
+
+EMBEDDING_DIM = _parse_embedding_dim()
 
 DEFAULT_BATCH_SIZE = 32
 MAX_RETRIES = 3
