@@ -133,6 +133,7 @@ class ChromaManager:
         self._collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"},
+            embedding_function=None,  # embeddings are always provided explicitly via SiliconFlow API
         )
 
     # ------------------------------------------------------------------
