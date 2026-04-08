@@ -2,7 +2,7 @@
 ChromaDB 动态知识库管理模块
 
 功能：
-- 调用 SiliconFlow BAAI/bge-m3 Embedding API 向量化文本
+- 调用 SiliconFlow Embedding API 向量化文本（模型由 EMBEDDING_MODEL 环境变量配置，默认 BAAI/bge-m3）
 - 将向量化结果存入 ChromaDB（持久化至 chroma_userdata/）
 - 支持增量新增、删除笔记
 - 支持向量相似度检索
@@ -68,13 +68,20 @@ def _doc_id_from_path(file_path: str) -> str:
 # Embedding
 # ---------------------------------------------------------------------------
 
-def get_embedding(text: str, api_key: Optional[str] = None) -> list[float]:
+def get_embedding(
+    text: str,
+    api_key: Optional[str] = None,
+    model: str = EMBEDDING_MODEL,
+    api_url: str = SILICONFLOW_API_URL,
+) -> list[float]:
     """
-    调用 SiliconFlow BAAI/bge-m3 API 获取文本向量。
+    调用 SiliconFlow Embedding API 获取文本向量。
 
     Args:
         text: 要向量化的文本。
         api_key: SiliconFlow API Key；若未传入则从环境变量 SILICONFLOW_API_KEY 读取。
+        model: Embedding 模型名称（默认从环境变量 EMBEDDING_MODEL 读取，回退为 BAAI/bge-m3）。
+        api_url: Embedding API 完整 URL（默认从环境变量 SILICONFLOW_API_URL 读取）。
 
     Returns:
         浮点数列表（embedding 向量）。
@@ -93,10 +100,10 @@ def get_embedding(text: str, api_key: Optional[str] = None) -> list[float]:
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
-    payload = {"model": EMBEDDING_MODEL, "input": text, "encoding_format": "float"}
+    payload = {"model": model, "input": text, "encoding_format": "float"}
     timeout = get_sf_timeout()
     response = call_with_retry(
-        lambda: httpx.post(SILICONFLOW_API_URL, json=payload, headers=headers, timeout=timeout)
+        lambda: httpx.post(api_url, json=payload, headers=headers, timeout=timeout)
     )
     return response.json()["data"][0]["embedding"]
 
@@ -114,6 +121,8 @@ class ChromaManager:
         persist_dir: ChromaDB 持久化目录（默认 chroma_userdata/）。
         api_key: SiliconFlow API Key；不传则读取环境变量。
         embedding_fn: 自定义 embedding 函数（主要用于测试，签名同 get_embedding）。
+        embedding_model: Embedding 模型名称；不传则使用模块级常量（来自环境变量）。
+        api_url: Embedding API 完整 URL；不传则使用模块级常量（来自环境变量）。
     """
 
     def __init__(
@@ -122,9 +131,13 @@ class ChromaManager:
         persist_dir: str = DEFAULT_CHROMA_DIR,
         api_key: Optional[str] = None,
         embedding_fn: Optional[Any] = None,
+        embedding_model: str = EMBEDDING_MODEL,
+        api_url: str = SILICONFLOW_API_URL,
     ) -> None:
         self.api_key = api_key
-        self._embed = embedding_fn or (lambda text: get_embedding(text, self.api_key))
+        self._embed = embedding_fn or (
+            lambda text: get_embedding(text, self.api_key, model=embedding_model, api_url=api_url)
+        )
         os.makedirs(persist_dir, exist_ok=True)
         self._client = chromadb.PersistentClient(
             path=persist_dir,
