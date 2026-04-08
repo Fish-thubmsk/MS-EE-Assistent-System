@@ -12,6 +12,11 @@
   - POST /api/auth/register   用户注册
   - POST /api/auth/login      用户登录
   - GET  /api/auth/me         获取当前用户
+  - POST /notes/              新增笔记
+  - POST /notes/file          从文件新增笔记
+  - DELETE /notes/{doc_id}    删除笔记
+  - GET  /notes/query         向量相似度检索
+  - GET  /notes/count         笔记总数
 
 无需真实 LLM API Key，所有 LLM 相关调用均通过 mock 或降级路径验证。
 """
@@ -20,9 +25,12 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 
 from backend.config import Settings, get_settings
 from backend.main import app
+from backend.routers.answer import get_optional_chroma_manager
+from backend.routers.notes import get_manager
 
 
 # ---------------------------------------------------------------------------
@@ -343,3 +351,243 @@ class TestAuth:
         )
         assert resp.status_code == 200
         assert "access_token" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# 笔记管理（notes）— 使用 mock ChromaManager
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_manager() -> MagicMock:
+    """构造一个符合 ChromaManager 接口的 MagicMock。"""
+    mgr = MagicMock()
+    mgr.add_note.return_value = "abcdef1234567890abcdef1234567890"
+    mgr.add_note_from_file.return_value = "fedcba0987654321fedcba0987654321"
+    mgr.delete_note.return_value = None
+    mgr.count.return_value = 2
+    mgr.query.return_value = [
+        {
+            "id": "note_001",
+            "document": "极限是微积分的基础概念",
+            "metadata": {"subject": "数学", "type": "note"},
+            "distance": 0.12,
+        }
+    ]
+    return mgr
+
+
+class TestNotes:
+    """测试 /notes/ 端点（ChromaDB 交互通过 mock ChromaManager 注入）。"""
+
+    @pytest.fixture(autouse=True)
+    def inject_mock_manager(self) -> None:
+        """在每个测试中用 MagicMock 替换 ChromaManager 依赖。"""
+        mock_mgr = _make_mock_manager()
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+        yield
+        del app.dependency_overrides[get_manager]
+
+    @pytest.fixture()
+    def client(self) -> TestClient:
+        return TestClient(app)
+
+    def test_add_note_success(self, client: TestClient) -> None:
+        """POST /notes/ 应返回 doc_id 和成功消息。"""
+        resp = client.post(
+            "/notes/",
+            json={"content": "极限是微积分的基础概念。", "metadata": {"subject": "数学"}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "doc_id" in data
+        assert "message" in data
+        assert isinstance(data["doc_id"], str)
+
+    def test_add_note_with_doc_id(self, client: TestClient) -> None:
+        """POST /notes/ 指定 doc_id 时，响应中应返回该 doc_id。"""
+        mock_mgr = _make_mock_manager()
+        mock_mgr.add_note.return_value = "my-custom-doc-id"
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+
+        resp = client.post(
+            "/notes/",
+            json={"content": "笔记内容", "doc_id": "my-custom-doc-id"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["doc_id"] == "my-custom-doc-id"
+
+    def test_add_note_missing_content_returns_422(self, client: TestClient) -> None:
+        """POST /notes/ 缺少 content 字段时应返回 422。"""
+        resp = client.post("/notes/", json={"metadata": {"subject": "数学"}})
+        assert resp.status_code == 422
+
+    def test_add_note_from_file_success(self, client: TestClient) -> None:
+        """POST /notes/file 应返回 doc_id 和成功消息。"""
+        resp = client.post(
+            "/notes/file",
+            json={"file_path": "mock_notes/math_note.md"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "doc_id" in data
+        assert "message" in data
+
+    def test_add_note_from_file_not_found(self, client: TestClient) -> None:
+        """POST /notes/file 文件不存在时应返回 404。"""
+        mock_mgr = _make_mock_manager()
+        mock_mgr.add_note_from_file.side_effect = FileNotFoundError("文件不存在")
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+
+        resp = client.post(
+            "/notes/file",
+            json={"file_path": "/nonexistent/path.md"},
+        )
+        assert resp.status_code == 404
+
+    def test_add_note_from_file_embedding_failure(self, client: TestClient) -> None:
+        """POST /notes/file 向量化失败时应返回 500。"""
+        mock_mgr = _make_mock_manager()
+        mock_mgr.add_note_from_file.side_effect = ValueError("API Key 未配置")
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+
+        resp = client.post(
+            "/notes/file",
+            json={"file_path": "some_note.md"},
+        )
+        assert resp.status_code == 400
+
+    def test_delete_note_success(self, client: TestClient) -> None:
+        """DELETE /notes/{doc_id} 应返回成功消息。"""
+        resp = client.delete("/notes/abcdef1234567890abcdef1234567890")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "message" in data
+        assert "abcdef1234567890abcdef1234567890" in data["message"]
+
+    def test_delete_note_failure(self, client: TestClient) -> None:
+        """DELETE /notes/{doc_id} 失败时应返回 500。"""
+        mock_mgr = _make_mock_manager()
+        mock_mgr.delete_note.side_effect = RuntimeError("ChromaDB 删除失败")
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+
+        resp = client.delete("/notes/nonexistent-id")
+        assert resp.status_code == 500
+
+    def test_query_notes_success(self, client: TestClient) -> None:
+        """GET /notes/query 应返回检索结果列表。"""
+        resp = client.get("/notes/query?q=极限的定义&n=3")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "results" in data
+        assert isinstance(data["results"], list)
+        assert len(data["results"]) == 1
+        item = data["results"][0]
+        assert "id" in item
+        assert "document" in item
+        assert "metadata" in item
+        assert "distance" in item
+
+    def test_query_notes_with_subject_filter(self, client: TestClient) -> None:
+        """GET /notes/query 支持按 subject 参数过滤。"""
+        resp = client.get("/notes/query?q=导数&n=5&subject=数学")
+        assert resp.status_code == 200
+        assert "results" in resp.json()
+
+    def test_query_notes_with_type_filter(self, client: TestClient) -> None:
+        """GET /notes/query 支持按 type 参数过滤。"""
+        resp = client.get("/notes/query?q=错题&n=5&type=wrong")
+        assert resp.status_code == 200
+        assert "results" in resp.json()
+
+    def test_query_notes_missing_q_returns_422(self, client: TestClient) -> None:
+        """GET /notes/query 缺少 q 参数时应返回 422。"""
+        resp = client.get("/notes/query?n=5")
+        assert resp.status_code == 422
+
+    def test_query_notes_embedding_failure(self, client: TestClient) -> None:
+        """GET /notes/query 向量化失败时应返回 400（ValueError → 400）。"""
+        mock_mgr = _make_mock_manager()
+        mock_mgr.query.side_effect = ValueError("API Key 未配置")
+        app.dependency_overrides[get_manager] = lambda: mock_mgr
+
+        resp = client.get("/notes/query?q=测试查询")
+        assert resp.status_code == 400
+
+    def test_count_notes_success(self, client: TestClient) -> None:
+        """GET /notes/count 应返回集合中的笔记数量。"""
+        resp = client.get("/notes/count")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "count" in data
+        assert data["count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# /api/answer with use_chroma=True
+# ---------------------------------------------------------------------------
+
+
+class TestAnswerWithChroma:
+    """验证 use_chroma=True 时 ChromaManager 被正确传递给 RAG 流程。"""
+
+    @pytest.fixture(autouse=True)
+    def inject_mock_manager(self) -> None:
+        """用 MagicMock 替换答案端点的 ChromaManager 依赖。"""
+        mock_mgr = _make_mock_manager()
+        app.dependency_overrides[get_optional_chroma_manager] = lambda: mock_mgr
+        yield
+        del app.dependency_overrides[get_optional_chroma_manager]
+
+    @pytest.fixture()
+    def client(self) -> TestClient:
+        return TestClient(app)
+
+    def test_answer_with_chroma_enabled(self, client: TestClient) -> None:
+        """use_chroma=True 时端点应正常返回，不报错。"""
+        resp = client.post(
+            "/api/answer",
+            json={
+                "user_input": "极限的定义是什么？",
+                "use_faiss": False,
+                "use_chroma": True,
+                "n_chroma_results": 3,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data["answer"], str)
+        assert len(data["answer"]) > 0
+        assert "citations" in data
+        assert "recommendations" in data
+        assert "messages" in data
+
+    def test_answer_chroma_results_appear_in_citations(self, client: TestClient) -> None:
+        """use_chroma=True 时，Chroma 检索结果应出现在 citations 中。"""
+        resp = client.post(
+            "/api/answer",
+            json={
+                "user_input": "极限计算",
+                "use_faiss": False,
+                "use_chroma": True,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # 答案中应包含 Chroma 笔记结果（至少有 1 条引用）
+        assert len(data["citations"]) >= 1
+        sources = [c["source"] for c in data["citations"]]
+        assert "chroma" in sources
+
+    def test_answer_chroma_with_filter(self, client: TestClient) -> None:
+        """use_chroma=True 带 chroma_filter 时应正常工作。"""
+        resp = client.post(
+            "/api/answer",
+            json={
+                "user_input": "数学极限",
+                "use_faiss": False,
+                "use_chroma": True,
+                "chroma_filter": {"subject": "数学"},
+            },
+        )
+        assert resp.status_code == 200
+        assert "answer" in resp.json()
