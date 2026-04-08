@@ -47,7 +47,7 @@ SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_API_URL = os.getenv(
     "SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/embeddings"
 )
-EMBEDDING_MODEL = "BAAI/bge-m3"
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
 
 
 # ---------------------------------------------------------------------------

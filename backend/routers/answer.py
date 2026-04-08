@@ -204,6 +204,8 @@ async def answer(req: AnswerRequest, settings: SettingsDep) -> AnswerResponse:
                 api_key=settings.siliconflow_api_key,
                 llm_model=settings.llm_model,
                 llm_base_url=settings.llm_base_url,
+                llm_temperature=settings.llm_temperature,
+                llm_max_tokens=settings.llm_max_tokens,
                 messages=req.messages or None,
                 params=req.params or None,
                 use_faiss=req.use_faiss,

@@ -27,13 +27,17 @@ from utils.sf_retry import call_with_retry, get_sf_timeout
 # 常量 / 默认配置
 # ---------------------------------------------------------------------------
 
-SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/embeddings"
-EMBEDDING_MODEL = "BAAI/bge-m3"
+SILICONFLOW_API_URL = os.environ.get(
+    "SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/embeddings"
+)
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
 # CWD-relative default; overrideable via CHROMA_PERSIST_DIRECTORY env var
 DEFAULT_CHROMA_DIR = os.path.abspath(
     os.environ.get("CHROMA_PERSIST_DIRECTORY", os.path.join(os.getcwd(), "chroma_userdata"))
 )
-DEFAULT_COLLECTION = "user_notes"
+# Preserve the original default "user_notes" for backward compatibility;
+# overrideable via CHROMA_COLLECTION_NAME env var.
+DEFAULT_COLLECTION = os.environ.get("CHROMA_COLLECTION_NAME", "user_notes")
 
 
 # ---------------------------------------------------------------------------

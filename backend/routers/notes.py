@@ -17,6 +17,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from backend.config import Settings, get_settings
 from knowledge_base.chroma_manager import ChromaManager
 
 router = APIRouter(prefix="/notes", tags=["notes"])
@@ -24,8 +25,12 @@ router = APIRouter(prefix="/notes", tags=["notes"])
 
 @lru_cache(maxsize=1)
 def _get_manager() -> ChromaManager:
-    """单例工厂，首次调用时初始化 ChromaManager。"""
-    return ChromaManager()
+    """单例工厂，首次调用时初始化 ChromaManager（使用应用配置）。"""
+    settings = get_settings()
+    return ChromaManager(
+        collection_name=settings.chroma_collection_name,
+        persist_dir=settings.chroma_persist_directory,
+    )
 
 
 def get_manager() -> ChromaManager:
