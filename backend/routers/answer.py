@@ -48,6 +48,10 @@ def get_optional_chroma_manager() -> Optional[Any]:
     委托给 notes 路由中的单例工厂；若初始化失败（例如无 SiliconFlow API Key
     或 LLM_MODEL 未配置的测试环境），静默返回 None，RAG 流程将跳过 Chroma 检索。
     """
+    # NOTE: We deliberately catch all Exception subclasses (not BaseException) so that
+    # any realistic failure mode (ValidationError, RuntimeError, OSError, etc.) during
+    # ChromaManager/settings initialization is handled gracefully.  KeyboardInterrupt
+    # and SystemExit are BaseException subclasses and are intentionally NOT caught here.
     try:
         return _get_notes_chroma_manager()
     except Exception as exc:  # pylint: disable=broad-except

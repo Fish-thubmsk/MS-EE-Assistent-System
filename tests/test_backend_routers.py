@@ -384,8 +384,10 @@ class TestNotes:
         """在每个测试中用 MagicMock 替换 ChromaManager 依赖。"""
         mock_mgr = _make_mock_manager()
         app.dependency_overrides[get_manager] = lambda: mock_mgr
-        yield
-        del app.dependency_overrides[get_manager]
+        try:
+            yield
+        finally:
+            app.dependency_overrides.pop(get_manager, None)
 
     @pytest.fixture()
     def client(self) -> TestClient:
@@ -535,8 +537,10 @@ class TestAnswerWithChroma:
         """用 MagicMock 替换答案端点的 ChromaManager 依赖。"""
         mock_mgr = _make_mock_manager()
         app.dependency_overrides[get_optional_chroma_manager] = lambda: mock_mgr
-        yield
-        del app.dependency_overrides[get_optional_chroma_manager]
+        try:
+            yield
+        finally:
+            app.dependency_overrides.pop(get_optional_chroma_manager, None)
 
     @pytest.fixture()
     def client(self) -> TestClient:
