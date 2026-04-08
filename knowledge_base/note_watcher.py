@@ -131,6 +131,25 @@ def scan_and_update(
                 logger.info("已存入 ChromaDB，doc_id=%s", doc_id)
             except (OSError, ValueError, RuntimeError) as exc:
                 logger.error("处理失败：%s → %s", md_file.name, exc)
+    
+    # 清理：如果 doc_id 对应的文档在 ChromaDB 中不存在，删除该记录
+    # （防止 ChromaDB 被手动删除后，状态文件仍保留旧记录）
+    orphaned_paths = []
+    total_state_entries = len(state)
+    for abs_path, entry in state.items():
+        doc_id = entry.get("doc_id")
+        if doc_id:
+            if not manager.doc_exists(doc_id):
+                logger.warning("孤立检测：状态记录中的 doc_id 在 ChromaDB 中不存在，移除：%s（doc_id=%s）", 
+                              abs_path, doc_id)
+                orphaned_paths.append(abs_path)
+    
+    if orphaned_paths:
+        logger.info("共检测到 %d 个孤立记录，当前状态记录总数：%d", len(orphaned_paths), total_state_entries)
+        for abs_path in orphaned_paths:
+            del state[abs_path]
+        logger.info("孤立清理完成，状态记录现有：%d 条", len(state))
+    
     return state
 
 

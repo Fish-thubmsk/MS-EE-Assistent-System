@@ -766,7 +766,8 @@ async function sendQASync(text) {
     removeTypingIndicator();
     appendMessage(chatBox, 'assistant', data.answer);
     state.messages.push({ role: 'assistant', content: data.answer });
-    renderResults(data.citations, data.recommendations);
+    // 显示引用和推荐卡片（在聊天消息后面）
+    renderResults(data.citations, data.recommendations || []);
   } catch (err) {
     removeTypingIndicator();
     appendMessage(chatBox, 'assistant', `❌ 请求失败：${err.message}`);
@@ -777,6 +778,8 @@ async function sendQAStream(text) {
   appendTypingIndicator(chatBox);
   let fullText = '';
   let bubble = null;
+  let citations = [];
+  let recommendations = [];
 
   try {
     const resp = await fetch(apiUrl('/api/answer/stream'), {
@@ -802,6 +805,7 @@ async function sendQAStream(text) {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let currentEventType = '';
 
     while (true) {
       const { done, value } = await reader.read();
@@ -810,12 +814,22 @@ async function sendQAStream(text) {
       const lines = buffer.split('\n');
       buffer = lines.pop();
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
           try {
             const payload = JSON.parse(line.slice(6));
-            if (payload.token) {
+            // 处理不同事件类型
+            if (currentEventType === 'metadata') {
+              citations = payload.citations || [];
+              recommendations = payload.recommendations || [];
+            } else if (currentEventType === 'token' && payload.token) {
               fullText += payload.token;
               bubble.innerHTML = renderMarkdown(fullText);
+              // 渲染流式内容中的数学公式
+              if (window.MathJax) {
+                MathJax.typesetPromise([bubble]).catch(err => console.log('MathJax stream render error:', err));
+              }
               chatBox.scrollTop = chatBox.scrollHeight;
             }
           } catch {}
@@ -823,42 +837,197 @@ async function sendQAStream(text) {
       }
     }
     state.messages.push({ role: 'assistant', content: fullText });
+    
+    // 流式完成后，显示引用和推荐卡片（附加在聊天消息后面）
+    if (citations.length > 0 || recommendations.length > 0) {
+      renderResults(citations, recommendations);
+    }
   } catch (err) {
     removeTypingIndicator();
     appendMessage(chatBox, 'assistant', `❌ 流式请求失败：${err.message}`);
   }
 }
 
-function renderResults(citations, recommendations) {
-  const area = document.getElementById('result-area');
-  const citList = document.getElementById('citations-list');
-  const recList  = document.getElementById('recommendations-list');
-  citList.innerHTML = '';
-  recList.innerHTML = '';
+function showCitationDetail(citation) {
+  /**
+    * 点击卡片时弹出详情窗口（包含完整内容和数学公式渲染）
+    */
+  const modal = document.createElement('div');
+  modal.className = 'modal fade';
+  modal.id = 'citationDetailModal';
+  modal.setAttribute('tabindex', '-1');
+  modal.setAttribute('aria-hidden', 'true');
 
-  if (citations && citations.length) {
+  const sourceLabel = citation.source === 'faiss' ? '题库' : '笔记';
+  const subject = citation.metadata?.subject || '未分类';
+
+  modal.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-bottom">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary">[${citation.index}]</span>
+            <div>
+              <h6 class="mb-0">${escHtml(sourceLabel)}</h6>
+              <small class="text-muted">${escHtml(subject)}</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <div id="citationContent"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  const bsModal = new bootstrap.Modal(modal);
+  
+  // 用 renderMarkdown 处理内容（支持数学公式）
+  const contentDiv = modal.querySelector('#citationContent');
+  contentDiv.innerHTML = renderMarkdown(citation.content_snippet || citation.content || '');
+  
+  bsModal.show();
+  
+  // 显示后渲染数学公式
+  modal.addEventListener('shown.bs.modal', () => {
+    if (window.MathJax) {
+      MathJax.typesetPromise([contentDiv]).catch(err => console.log('MathJax render error:', err));
+    }
+  });
+  
+  // 清理
+  modal.addEventListener('hidden.bs.modal', () => {
+    modal.remove();
+  });
+}
+
+function renderResults(citations, recommendations) {
+  // 创建卡片容器（显示在聊天区域，不使用下方固定区域）
+  const container = document.createElement('div');
+  container.className = 'msg-citations';
+  container.style.cssText = `
+    margin: 12px 8px 8px 8px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  `;
+
+  // 渲染引用来源（卡片样式 + 可点击）
+  if (citations && citations.length > 0) {
+    const citHeader = document.createElement('div');
+    citHeader.style.cssText = 'font-weight: 600; font-size: 0.82rem; color: #475569; padding: 0 4px; margin-top: 8px;';
+    citHeader.innerHTML = '<i class="bi bi-card-list"></i> 引用来源';
+    container.appendChild(citHeader);
+    
     citations.forEach(c => {
       const div = document.createElement('div');
-      div.className = 'border rounded p-1 mb-1 small';
-      div.innerHTML = `<span class="badge bg-secondary me-1">[${c.index}]</span><strong>${escHtml(c.source)}</strong><br><span class="text-muted">${escHtml(c.content_snippet)}</span>`;
-      citList.appendChild(div);
+      div.className = 'card mb-2';
+      div.style.borderLeft = '4px solid var(--primary)';
+      div.style.cursor = 'pointer';
+      div.style.transition = 'box-shadow 0.2s';
+      
+      // 渲染内容（含数学公式）
+      const contentHtml = renderMarkdown(c.content_snippet || '');
+      
+      div.innerHTML = `
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start gap-2">
+            <span class="badge bg-primary flex-shrink-0">[${c.index}]</span>
+            <div style="flex: 1; min-width: 0;">
+              <div class="small mb-1">
+                <strong>${escHtml(c.source?.toUpperCase() || 'FAISS')}</strong>
+                <span class="text-muted ms-2">${escHtml(c.metadata?.subject || '未分类')}</span>
+              </div>
+              <div class="text-muted small" style="word-break: break-word; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                ${contentHtml}
+              </div>
+              <div class="small text-primary mt-1"><i class="bi bi-arrow-right"></i> 点击查看详情</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // 点击卡片显示详情
+      div.addEventListener('click', () => {
+        showCitationDetail(c);
+      });
+      
+      // hover 效果
+      div.addEventListener('mouseenter', () => {
+        div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+      });
+      div.addEventListener('mouseleave', () => {
+        div.style.boxShadow = '';
+      });
+      
+      container.appendChild(div);
     });
-  } else {
-    citList.innerHTML = '<div class="text-muted small">无引用来源</div>';
   }
 
-  if (recommendations && recommendations.length) {
+  // 渲染相关推荐
+  if (recommendations && recommendations.length > 0) {
+    const recHeader = document.createElement('div');
+    recHeader.style.cssText = 'font-weight: 600; font-size: 0.82rem; color: #475569; padding: 0 4px; margin-top: 8px;';
+    recHeader.innerHTML = '<i class="bi bi-lightbulb"></i> 相关推荐';
+    container.appendChild(recHeader);
+    
     recommendations.forEach(r => {
       const div = document.createElement('div');
-      div.className = 'border rounded p-1 mb-1 small';
-      div.innerHTML = `${subjectTagHtml(r.subject)} ${escHtml(r.content_snippet.slice(0,80))}…`;
-      recList.appendChild(div);
+      div.className = 'card mb-2';
+      div.style.borderLeft = '4px solid #f59e0b';
+      div.style.cursor = 'pointer';
+      div.style.transition = 'box-shadow 0.2s';
+      
+      const contentHtml = renderMarkdown(r.content_snippet || '');
+      
+      div.innerHTML = `
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-start gap-2">
+            <span class="badge bg-warning flex-shrink-0">推</span>
+            <div style="flex: 1; min-width: 0;">
+              <div class="small mb-1">
+                <strong>${escHtml(r.source?.toUpperCase() || 'FAISS')}</strong>
+                <span class="text-muted ms-2">${escHtml(r.metadata?.subject || '未分类')}</span>
+                <span class="text-muted ms-2">相似度: ${(r.score * 100).toFixed(0)}%</span>
+              </div>
+              <div class="text-muted small" style="word-break: break-word; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                ${contentHtml}
+              </div>
+              <div class="small text-primary mt-1"><i class="bi bi-arrow-right"></i> 点击查看详情</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // 点击卡片显示详情
+      div.addEventListener('click', () => {
+        showCitationDetail(r);
+      });
+      
+      div.addEventListener('mouseenter', () => {
+        div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+      });
+      div.addEventListener('mouseleave', () => {
+        div.style.boxShadow = '';
+      });
+      
+      container.appendChild(div);
     });
-  } else {
-    recList.innerHTML = '<div class="text-muted small">无推荐内容</div>';
   }
 
-  area.classList.remove('hidden');
+  // 将卡片容器添加到聊天框
+  if (container.children.length > 0) {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.appendChild(container);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    // 渲染数学公式
+    if (window.MathJax) {
+      MathJax.typesetPromise([container]).catch(err => console.log('MathJax render error:', err));
+    }
+  }
 }
 
 // ============================================================

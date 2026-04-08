@@ -24,6 +24,7 @@ from agents.rag_agent import (
     DEFAULT_N_CHROMA,
     DEFAULT_N_FAISS,
     SILICONFLOW_BASE_URL,
+    _ANSWER_PROMPT_TEMPLATE,
     run_rag,
 )
 from backend.config import Settings, get_settings
@@ -99,8 +100,8 @@ class CitationOut(BaseModel):
 class RecommendationOut(BaseModel):
     doc_id: str
     content_snippet: str
-    subject: str
-    year: str
+    subject: Optional[str] = None
+    year: Optional[str] = None
     score: float
 
 
@@ -131,12 +132,20 @@ async def _stream_siliconflow(
     temperature: float,
     max_tokens: int,
     timeout: int,
+    citations: Optional[list[dict[str, Any]]] = None,
+    recommendations: Optional[list[dict[str, Any]]] = None,
 ) -> AsyncGenerator[str, None]:
     """
     调用 SiliconFlow OpenAI-compatible Streaming API，逐 chunk yield SSE 事件。
 
-    每个 token chunk 发送 ``event: token`` 事件；
-    完成后发送 ``event: done`` 事件，携带使用量统计。
+    事件序列：
+    1. ``event: metadata`` — 发送引用和推荐信息
+    2. ``event: token`` — 逐个发送 token
+    3. ``event: done`` — 生成完毕
+
+    Args:
+        citations: 可选的引用列表，将在流开始时发送
+        recommendations: 可选的推荐列表，将在流开始时发送
     """
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {
@@ -151,6 +160,19 @@ async def _stream_siliconflow(
         "max_tokens": max_tokens,
         "stream": True,
     }
+
+    # 首先发送元数据（引用和推荐）
+    if citations or recommendations:
+        yield _sse_event(
+            json.dumps(
+                {
+                    "citations": citations or [],
+                    "recommendations": recommendations or [],
+                },
+                ensure_ascii=False,
+            ),
+            event="metadata",
+        )
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as response:
@@ -252,17 +274,33 @@ async def answer(
     return AnswerResponse(
         answer=state["answer"],
         citations=[CitationOut(**c) for c in state.get("citations", [])],
-        recommendations=[RecommendationOut(**r) for r in state.get("recommendations", [])],
+        recommendations=[
+            RecommendationOut(
+                doc_id=r["doc_id"],
+                content_snippet=r["content_snippet"],
+                subject=r.get("metadata", {}).get("subject") if isinstance(r.get("metadata"), dict) else None,
+                year=r.get("metadata", {}).get("year") if isinstance(r.get("metadata"), dict) else None,
+                score=r["score"],
+            )
+            for r in state.get("recommendations", [])
+        ],
         messages=state["messages"],
     )
 
 
 @router.post("/stream", summary="RAG SSE 流式问答")
-async def answer_stream(req: AnswerRequest, settings: SettingsDep) -> StreamingResponse:
+async def answer_stream(
+    req: AnswerRequest, settings: SettingsDep, _chroma_manager: OptionalChromaManagerDep
+) -> StreamingResponse:
     """
-    SSE 流式返回 LLM 生成内容。
+    SSE 流式返回 LLM 生成内容，同时使用 RAG 增强。
 
-    **事件类型：**
+    **流程：**
+    1. 同步执行 RAG（检索 FAISS + Chroma，融合上下文）
+    2. 流式调用 LLM 生成答案（带完整 RAG context）
+
+    **SSE 事件类型：**
+    - `event: metadata` — 引用来源和相似推荐（JSON），第一个事件发送
     - `event: token` — 单个 token 或文本片段，`data` 为 `{"token": "..."}`
     - `event: done`  — 生成完毕，`data` 为 `{"status": "done"}`
     - `event: error` — 发生错误，`data` 为 `{"error": "..."}`
@@ -282,14 +320,62 @@ async def answer_stream(req: AnswerRequest, settings: SettingsDep) -> StreamingR
             },
         )
 
-    # 构建完整 prompt（简化：直接将问题作为 prompt）
-    prompt = req.user_input
+    # 阶段 1：同步执行 RAG（检索 + context 构建）
+    chroma_mgr = _chroma_manager if req.use_chroma else None
+    
+    # 如果需要推荐，请求更多 FAISS 结果（citations + 额外推荐用）
+    n_faiss = req.n_faiss_results
+    # 默认情况：citations 用 5 个，推荐用额外 3 个，所以总共请求 8 个
+    if req.use_faiss and n_faiss <= 5:
+        n_faiss = 8
+    
+    try:
+        state = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: run_rag(
+                req.user_input,
+                api_key="",  # 禁用同步 RAG 的 LLM 调用（我们在流式中调用）
+                llm_model=settings.llm_model,
+                llm_base_url=settings.llm_base_url,
+                llm_temperature=settings.llm_temperature,
+                llm_max_tokens=settings.llm_max_tokens,
+                messages=req.messages or None,
+                params=req.params or None,
+                use_faiss=req.use_faiss,
+                use_chroma=req.use_chroma,
+                chroma_manager=chroma_mgr,
+                n_faiss_results=n_faiss,
+                n_chroma_results=req.n_chroma_results,
+                chroma_filter=req.chroma_filter,
+            ),
+        )
+    except Exception as exc:
+        logger.exception("RAG 检索失败: %s", exc)
+        # 降级：无上下文的流式回答
+        state = {
+            "fused_context": [],
+            "citations": [],
+            "recommendations": [],
+        }
+
+    # 阶段 2：用 RAG context 构建完整 prompt
+    from agents.rag_agent import _build_context_text  # noqa: PLC0415
+
+    fused_context = state.get("fused_context", [])
+    context_text = _build_context_text(fused_context)
+    prompt = _ANSWER_PROMPT_TEMPLATE.format(
+        context=context_text,
+        question=req.user_input,
+    )
+
+    # 为了兼容历史消息（optional）
     if req.messages:
         history_text = "\n".join(
             f"{m['role']}: {m['content']}" for m in req.messages[-_MAX_HISTORY_MESSAGES:]
         )
-        prompt = f"对话历史：\n{history_text}\n\n当前问题：{req.user_input}"
+        prompt = f"对话历史：\n{history_text}\n\n{prompt}"
 
+    # 阶段 3：流式调用 LLM，同时发送引用信息
     return StreamingResponse(
         _stream_siliconflow(
             prompt=prompt,
@@ -299,6 +385,8 @@ async def answer_stream(req: AnswerRequest, settings: SettingsDep) -> StreamingR
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
             timeout=settings.llm_timeout,
+            citations=state.get("citations", []),
+            recommendations=state.get("recommendations", []),
         ),
         media_type="text/event-stream",
         headers={

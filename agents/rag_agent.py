@@ -97,12 +97,13 @@ def _normalize_chroma_result(r: dict[str, Any], idx: int) -> dict[str, Any]:
     distance = r.get("distance")
     # cosine distance → similarity: similarity = 1 - distance（chromadb 返回 cosine distance）
     score = (1.0 - float(distance)) if distance is not None else 0.0
+    meta = r.get("metadata") or {}  # 防御 None 值，转为空字典
     return {
         "citation_index": idx,
         "source": "chroma",
         "doc_id": str(r.get("id", "")),
         "content": r.get("document", ""),
-        "metadata": r.get("metadata", {}),
+        "metadata": meta,
         "score": score,
     }
 
@@ -134,10 +135,10 @@ def _build_context_text(fused_context: list[dict[str, Any]]) -> str:
     for item in fused_context:
         idx = item["citation_index"]
         content = item["content"][:500]  # 截断过长内容
-        meta = item["metadata"]
+        meta = item.get("metadata") or {}  # 防御 None 值
         source_label = "知识库题目" if item["source"] == "faiss" else "个人笔记/错题"
-        subject = meta.get("subject", "")
-        year = meta.get("year", "")
+        subject = meta.get("subject", "") if isinstance(meta, dict) else ""
+        year = meta.get("year", "") if isinstance(meta, dict) else ""
         prefix = f"[{idx}] ({source_label}"
         if subject:
             prefix += f" | {subject}"
@@ -313,8 +314,12 @@ class RAGAgent:
         融合 FAISS 与 Chroma 检索结果：
         - FAISS 结果优先（得分高）排列在前
         - 按 content 去重（保留得分较高的版本）
-        - 为每个结果分配 citation_index（从 1 开始）
+        - 为每个结果分配 citation_index（从 1 开始，最多 5 个）
+        - 推荐从剩余未使用的 FAISS 结果中取（去重，最多 3 个）
         """
+        MAX_CITATIONS = 5
+        MAX_RECOMMENDATIONS = 3
+        
         faiss_raw = state.get("faiss_results", [])
         chroma_raw = state.get("chroma_results", [])
 
@@ -337,19 +342,26 @@ class RAGAgent:
                 seen_contents.add(key)
                 item["citation_index"] = len(fused) + 1
                 fused.append(item)
+                # 最多 MAX_CITATIONS 个用于引用
+                if len(fused) >= MAX_CITATIONS:
+                    break
 
-        # 推荐：FAISS 结果（题目）中额外返回的项作为相似推荐
-        recommendations = [
-            {
-                "doc_id": item["doc_id"],
-                "content_snippet": item["content"][:120],
-                "subject": item["metadata"].get("subject", ""),
-                "year": item["metadata"].get("year", ""),
-                "score": item["score"],
-            }
-            for item in fused
-            if item["source"] == "faiss"
-        ]
+        # 推荐：从原始 FAISS 结果中取，排除已在 citations 中的内容
+        recommendations = []
+        for item in faiss_raw:
+            # 检查这个 FAISS 结果是否已被加入 fused
+            content_key = item.get("content", "")[:100].strip()
+            if content_key and content_key not in seen_contents:
+                recommendations.append({
+                    "doc_id": item.get("doc_id", ""),
+                    "source": item.get("source", "faiss"),  # 添加来源标识
+                    "content_snippet": item.get("content", "")[:300],
+                    "metadata": item.get("metadata", {}),  # 添加完整元数据
+                    "score": item.get("score", 0),
+                })
+                # 最多 MAX_RECOMMENDATIONS 个推荐
+                if len(recommendations) >= MAX_RECOMMENDATIONS:
+                    break
 
         return {**state, "fused_context": fused, "recommendations": recommendations}
 
@@ -411,7 +423,7 @@ class RAGAgent:
                 "index": item["citation_index"],
                 "source": item["source"],
                 "doc_id": item["doc_id"],
-                "content_snippet": item["content"][:150],
+                "content_snippet": item["content"][:500],  # 增加到 500 字符，保留更多内容
                 "metadata": item["metadata"],
             }
             for item in fused

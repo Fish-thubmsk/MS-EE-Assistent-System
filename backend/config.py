@@ -50,7 +50,7 @@ class Settings(BaseSettings):
         description="SiliconFlow API 最大重试次数（遇到 429 或超时时触发）",
     )
     sf_api_timeout: int = Field(
-        default=30,
+        default=60,
         description="SiliconFlow API 请求超时时间（秒）",
     )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +63,38 @@ app.include_router(chat_router)
 app.include_router(diagnosis_router)
 app.include_router(answer_router)
 app.include_router(practice_router)
+
+
+# ---------------------------------------------------------------------------
+# 自动启动笔记监控 (Note Watcher)
+# ---------------------------------------------------------------------------
+
+def _start_note_watcher() -> None:
+    """在后台线程中启动笔记监控。"""
+    try:
+        from knowledge_base.note_watcher import watch
+        
+        logger.info("启动笔记文件监控后台线程...")
+        watcher_thread = threading.Thread(
+            target=watch,
+            kwargs={
+                "notes_dir": None,  # 使用环境变量或默认值
+                "persist_dir": None,  # 使用环境变量或默认值
+                "once": False,  # 持续监控
+            },
+            daemon=True,
+        )
+        watcher_thread.start()
+    except ImportError:
+        logger.warning("note_watcher 模块不可用，跳过笔记监控")
+    except Exception as exc:
+        logger.error("启动笔记监控失败: %s", exc)
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    """应用启动事件处理。"""
+    _start_note_watcher()
 
 
 # ---------------------------------------------------------------------------

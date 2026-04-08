@@ -277,6 +277,22 @@ class ChromaManager:
         """返回集合中的文档总数。"""
         return self._collection.count()
 
+    def doc_exists(self, doc_id: str) -> bool:
+        """
+        检查指定 doc_id 的文档是否存在于 ChromaDB 中。
+        
+        Args:
+            doc_id: 文档唯一 ID。
+            
+        Returns:
+            True 如果文档存在，否则 False。
+        """
+        try:
+            result = self._collection.get(ids=[doc_id])
+            return len(result.get("ids", [])) > 0
+        except Exception:
+            return False
+
     def doc_id_from_path(self, file_path: str) -> str:
         """公开的辅助方法：根据文件路径获取 doc_id。"""
         return _doc_id_from_path(file_path)
