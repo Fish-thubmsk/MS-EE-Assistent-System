@@ -30,6 +30,7 @@ def _get_manager() -> ChromaManager:
     return ChromaManager(
         collection_name=settings.chroma_collection_name,
         persist_dir=settings.chroma_persist_directory,
+        api_key=settings.siliconflow_api_key,
     )
 
 
