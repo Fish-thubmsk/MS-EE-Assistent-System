@@ -16,11 +16,16 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
+from dotenv import load_dotenv
+
 import httpx
 import chromadb
 from chromadb.config import Settings
 
 from utils.sf_retry import call_with_retry, get_sf_timeout
+
+# 加载 .env 文件以确保环境变量可用
+load_dotenv()
 
 
 # ---------------------------------------------------------------------------
