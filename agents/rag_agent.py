@@ -154,6 +154,8 @@ def _call_siliconflow_llm(
     model: str,
     base_url: str = SILICONFLOW_BASE_URL,
     timeout: Optional[int] = None,
+    temperature: Optional[float] = None,
+    max_tokens: Optional[int] = None,
 ) -> str:
     """
     直接调用 SiliconFlow OpenAI-compatible Chat Completions API。
@@ -164,6 +166,8 @@ def _call_siliconflow_llm(
         model: 模型名称，必须显式传入（通过 LLM_MODEL 环境变量或调用方指定）。
         base_url: API 基础 URL。
         timeout: 超时秒数；为 None 时读取环境变量 SF_API_TIMEOUT（默认 30）。
+        temperature: 采样温度；为 None 时读取环境变量 LLM_TEMPERATURE（默认 0.3）。
+        max_tokens: 最大生成 token 数；为 None 时读取环境变量 LLM_MAX_TOKENS（默认 2048）。
 
     Returns:
         LLM 生成的答案文本。
@@ -181,6 +185,12 @@ def _call_siliconflow_llm(
             "LLM 模型名称未配置，请设置环境变量 LLM_MODEL（推荐：deepseek-ai/DeepSeek-V3）。"
         )
     _timeout = timeout if timeout is not None else get_sf_timeout()
+    _temperature = temperature if temperature is not None else float(
+        os.environ.get("LLM_TEMPERATURE", "0.3")
+    )
+    _max_tokens = max_tokens if max_tokens is not None else int(
+        os.environ.get("LLM_MAX_TOKENS", "2048")
+    )
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -188,8 +198,8 @@ def _call_siliconflow_llm(
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.3,
-        "max_tokens": 2048,
+        "temperature": _temperature,
+        "max_tokens": _max_tokens,
     }
     url = f"{base_url.rstrip('/')}/chat/completions"
     response = call_with_retry(
@@ -222,6 +232,8 @@ class RAGAgent:
         api_key: SiliconFlow API Key（llm 未提供时使用）；默认读取环境变量。
         llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL，默认 SiliconFlow。
+        llm_temperature: LLM 采样温度；未传入时读取环境变量 LLM_TEMPERATURE（默认 0.3）。
+        llm_max_tokens: LLM 最大生成 token 数；未传入时读取环境变量 LLM_MAX_TOKENS（默认 2048）。
     """
 
     def __init__(
@@ -232,6 +244,8 @@ class RAGAgent:
         api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
         llm_base_url: str = SILICONFLOW_BASE_URL,
+        llm_temperature: Optional[float] = None,
+        llm_max_tokens: Optional[int] = None,
     ) -> None:
         self._faiss_searcher = faiss_searcher or _default_faiss_searcher
         self._chroma_manager = chroma_manager
@@ -239,6 +253,8 @@ class RAGAgent:
         self._api_key = api_key or os.environ.get("SILICONFLOW_API_KEY", "")
         self._llm_model = llm_model or os.environ.get("LLM_MODEL", "")
         self._llm_base_url = llm_base_url
+        self._llm_temperature = llm_temperature
+        self._llm_max_tokens = llm_max_tokens
 
     # ------------------------------------------------------------------
     # LangGraph 节点
@@ -348,6 +364,8 @@ class RAGAgent:
                     api_key=self._api_key,
                     model=self._llm_model,
                     base_url=self._llm_base_url,
+                    temperature=self._llm_temperature,
+                    max_tokens=self._llm_max_tokens,
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("SiliconFlow LLM API 调用失败：%s", exc)
@@ -430,6 +448,8 @@ def create_rag_graph(
     api_key: Optional[str] = None,
     llm_model: Optional[str] = None,
     llm_base_url: str = SILICONFLOW_BASE_URL,
+    llm_temperature: Optional[float] = None,
+    llm_max_tokens: Optional[int] = None,
 ) -> Any:
     """
     构建并编译 RAG QA Agent 的 LangGraph 工作流。
@@ -454,6 +474,8 @@ def create_rag_graph(
         api_key: SiliconFlow API Key；未提供时读取环境变量。
         llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL。
+        llm_temperature: LLM 采样温度；未传入时读取环境变量 LLM_TEMPERATURE（默认 0.3）。
+        llm_max_tokens: LLM 最大生成 token 数；未传入时读取环境变量 LLM_MAX_TOKENS（默认 2048）。
 
     Returns:
         编译后的 CompiledGraph 对象。
@@ -465,6 +487,8 @@ def create_rag_graph(
         api_key=api_key,
         llm_model=llm_model,
         llm_base_url=llm_base_url,
+        llm_temperature=llm_temperature,
+        llm_max_tokens=llm_max_tokens,
     )
 
     graph = StateGraph(RAGState)
@@ -497,6 +521,8 @@ def run_rag(
     api_key: Optional[str] = None,
     llm_model: Optional[str] = None,
     llm_base_url: str = SILICONFLOW_BASE_URL,
+    llm_temperature: Optional[float] = None,
+    llm_max_tokens: Optional[int] = None,
     messages: Optional[list[dict[str, str]]] = None,
     params: Optional[dict[str, Any]] = None,
     use_faiss: bool = True,
@@ -516,6 +542,8 @@ def run_rag(
         api_key: SiliconFlow API Key。
         llm_model: LLM 模型名称；未传入时读取环境变量 LLM_MODEL。
         llm_base_url: LLM API 基础 URL。
+        llm_temperature: LLM 采样温度；未传入时读取环境变量 LLM_TEMPERATURE（默认 0.3）。
+        llm_max_tokens: LLM 最大生成 token 数；未传入时读取环境变量 LLM_MAX_TOKENS（默认 2048）。
         messages: 历史消息列表。
         params: RouterAgent 传来的参数（subject 等）。
         use_faiss: 是否检索 FAISS，默认 True。
@@ -534,6 +562,8 @@ def run_rag(
         api_key=api_key,
         llm_model=llm_model,
         llm_base_url=llm_base_url,
+        llm_temperature=llm_temperature,
+        llm_max_tokens=llm_max_tokens,
     )
 
     initial: RAGState = {

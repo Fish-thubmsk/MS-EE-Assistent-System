@@ -69,10 +69,10 @@ _MOCK_HISTORY_PATH = Path(
     )
 )
 
-# 薄弱点判定阈值（准确率低于此值视为薄弱）
-WEAK_THRESHOLD: float = 0.6
-# 每个薄弱点推荐题目数
-RECOMMEND_PER_POINT: int = 3
+# 薄弱点判定阈值（准确率低于此值视为薄弱），可通过 DIAGNOSIS_WEAK_THRESHOLD 环境变量覆盖
+WEAK_THRESHOLD: float = float(os.environ.get("DIAGNOSIS_WEAK_THRESHOLD", "0.6"))
+# 每个薄弱点推荐题目数，可通过 DIAGNOSIS_RECOMMEND_PER_POINT 环境变量覆盖
+RECOMMEND_PER_POINT: int = int(os.environ.get("DIAGNOSIS_RECOMMEND_PER_POINT", "3"))
 
 # ---------------------------------------------------------------------------
 # LangGraph 状态定义

@@ -62,8 +62,8 @@ SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_API_URL = os.getenv(
     "SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1/embeddings"
 )
-EMBEDDING_MODEL = "BAAI/bge-m3"
-EMBEDDING_DIM = 1024  # bge-m3 output dimension
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-m3")
+EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
 
 DEFAULT_BATCH_SIZE = 32
 MAX_RETRIES = 3

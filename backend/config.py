@@ -85,6 +85,30 @@ class Settings(BaseSettings):
         default="knowledge_base/faiss_index",
         description="FAISS 索引文件目录路径",
     )
+    embedding_dim: int = Field(
+        default=1024,
+        description="Embedding 向量维度（bge-m3 为 1024；切换模型时需同步调整）",
+    )
+
+    # -----------------------------------------------------------------------
+    # SiliconFlow Embedding API URL
+    # -----------------------------------------------------------------------
+    siliconflow_api_url: str = Field(
+        default="https://api.siliconflow.cn/v1/embeddings",
+        description="SiliconFlow Embedding API 完整 URL（含 /embeddings 路径）",
+    )
+
+    # -----------------------------------------------------------------------
+    # 诊断 Agent
+    # -----------------------------------------------------------------------
+    diagnosis_weak_threshold: float = Field(
+        default=0.6,
+        description="薄弱知识点判定阈值（准确率低于此值视为薄弱，范围 0.0–1.0）",
+    )
+    diagnosis_recommend_per_point: int = Field(
+        default=3,
+        description="每个薄弱知识点推荐题目数量",
+    )
 
     # -----------------------------------------------------------------------
     # FastAPI / 服务
