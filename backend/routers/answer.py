@@ -27,6 +27,7 @@ from agents.rag_agent import (
     run_rag,
 )
 from backend.config import Settings, get_settings
+from backend.routers.notes import get_manager as _get_notes_chroma_manager
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,27 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 _MAX_HISTORY_MESSAGES = 6
 # Delay between streamed characters in mock mode (seconds)
 _STREAM_CHAR_DELAY = 0.01
+
+
+def get_optional_chroma_manager() -> Optional[Any]:
+    """
+    答案端点专用的 ChromaManager 可选依赖。
+
+    委托给 notes 路由中的单例工厂；若初始化失败（例如无 SiliconFlow API Key
+    或 LLM_MODEL 未配置的测试环境），静默返回 None，RAG 流程将跳过 Chroma 检索。
+    """
+    # NOTE: We deliberately catch all Exception subclasses (not BaseException) so that
+    # any realistic failure mode (ValidationError, RuntimeError, OSError, etc.) during
+    # ChromaManager/settings initialization is handled gracefully.  KeyboardInterrupt
+    # and SystemExit are BaseException subclasses and are intentionally NOT caught here.
+    try:
+        return _get_notes_chroma_manager()
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.warning("ChromaManager 初始化失败，Chroma 检索将不可用: %s", exc)
+        return None
+
+
+OptionalChromaManagerDep = Annotated[Optional[Any], Depends(get_optional_chroma_manager)]
 
 
 # ---------------------------------------------------------------------------
@@ -189,13 +211,20 @@ async def _stream_mock(question: str) -> AsyncGenerator[str, None]:
 
 
 @router.post("", response_model=AnswerResponse, summary="RAG 同步问答")
-async def answer(req: AnswerRequest, settings: SettingsDep) -> AnswerResponse:
+async def answer(
+    req: AnswerRequest,
+    settings: SettingsDep,
+    _chroma_manager: OptionalChromaManagerDep,
+) -> AnswerResponse:
     """
     接收用户问题，通过 RAG 流程（FAISS + Chroma 检索 + LLM 生成）返回完整答案。
 
     - 若 **SILICONFLOW_API_KEY** 未配置，降级为基于检索结果的模板答案。
     - 通过 **use_chroma** 参数控制是否融合 Chroma 个人笔记。
     """
+    # 仅在 use_chroma=True 时将 ChromaManager 实例传入 RAG 流程
+    chroma_mgr = _chroma_manager if req.use_chroma else None
+
     try:
         state = await asyncio.get_event_loop().run_in_executor(
             None,
@@ -210,6 +239,7 @@ async def answer(req: AnswerRequest, settings: SettingsDep) -> AnswerResponse:
                 params=req.params or None,
                 use_faiss=req.use_faiss,
                 use_chroma=req.use_chroma,
+                chroma_manager=chroma_mgr,
                 n_faiss_results=req.n_faiss_results,
                 n_chroma_results=req.n_chroma_results,
                 chroma_filter=req.chroma_filter,
