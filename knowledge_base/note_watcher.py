@@ -25,7 +25,12 @@ import os
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from knowledge_base.chroma_manager import ChromaManager
+
+# 加载 .env 文件
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
