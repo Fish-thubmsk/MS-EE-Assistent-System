@@ -1519,7 +1519,7 @@ docker-compose up -d
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| JWT_SECRET_KEY | CHANGE_ME_IN_PRODUCTION | 签名密钥（生产必须替换） |
+| JWT_SECRET_KEY | 空字符串（触发运行时随机生成） | 签名密钥；未设置时 `get_settings()` 自动生成临时随机密钥，重启后 Token 失效；生产环境必须显式配置强随机字符串 |
 | JWT_ALGORITHM | HS256 | 签名算法 |
 | JWT_EXPIRE_MINUTES | 1440 | Token 有效期（分钟） |
 
