@@ -267,7 +267,7 @@ class GitHubNewsSpider:
             if resume and file_info["name"] in already_downloaded:
                 continue
             
-            logger.info(f"[{idx}/{len(files)}] 下载 {file_info['name']}...", end=" ")
+            logger.info(f"[{idx}/{len(files)}] 下载 {file_info['name']}...")
             
             if self.download_file(
                 file_info["download_url"],

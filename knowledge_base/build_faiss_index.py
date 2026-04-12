@@ -138,6 +138,9 @@ def get_embeddings(texts: list, api_key: str = "", api_url: str = "") -> list:
             resp = requests.post(
                 api_url, headers=headers, json=payload, timeout=60
             )
+            if resp.status_code != 200:
+                print(f"  [debug] API response status: {resp.status_code}")
+                print(f"  [debug] Response text: {resp.text[:200]}")
             resp.raise_for_status()
             data = resp.json()
             # sort by index to preserve input order

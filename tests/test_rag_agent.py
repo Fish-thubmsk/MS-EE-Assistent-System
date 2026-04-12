@@ -82,11 +82,17 @@ def _make_state(
         params={},
         use_faiss=use_faiss,
         use_chroma=use_chroma,
+        use_rrf=False,
+        rrf_k=60,
+        use_rerank=False,
+        rerank_model="Pro/BAAI/bge-reranker-v2-m3",
+        rerank_top_n=5,
         n_faiss_results=DEFAULT_N_FAISS,
         n_chroma_results=DEFAULT_N_CHROMA,
         chroma_filter=None,
         faiss_results=faiss_results or [],
         chroma_results=chroma_results or [],
+        fused_context_before_rerank=[],
         fused_context=[],
         answer="",
         citations=[],
@@ -266,6 +272,19 @@ class TestFuseResults:
         scores = [item["score"] for item in new_state["fused_context"]]
         assert scores == sorted(scores, reverse=True)
 
+    def test_rrf_mode_reorders_by_rank_fusion(self) -> None:
+        state = _make_state(
+            faiss_results=[_FAISS_RESULT_1, _FAISS_RESULT_2],
+            chroma_results=[_CHROMA_RESULT_1],
+            use_chroma=True,
+        )
+        state["use_rrf"] = True
+        state["rrf_k"] = 10
+        new_state = RAGAgent.fuse_results(state)
+        assert len(new_state["fused_context"]) >= 1
+        # RRF 模式下 score 为融合分值，通常较小但应为正数
+        assert all(item["score"] > 0 for item in new_state["fused_context"])
+
     def test_recommendations_include_faiss_items(self) -> None:
         state = _make_state(faiss_results=[_FAISS_RESULT_1])
         new_state = RAGAgent.fuse_results(state)
@@ -340,6 +359,34 @@ class TestGenerateAnswer:
         new_state = agent.generate_answer(state)
         roles = [m["role"] for m in new_state["messages"]]
         assert "assistant" in roles
+
+
+class TestRerankResults:
+    def test_skips_when_disabled(self) -> None:
+        state = _make_state(faiss_results=[_FAISS_RESULT_1, _FAISS_RESULT_2], use_faiss=True)
+        fused_state = RAGAgent.fuse_results(state)
+        agent = RAGAgent(api_key="", rerank_api_key="")
+        out = agent.rerank_results(fused_state)
+        assert out["fused_context_before_rerank"] == fused_state["fused_context"]
+        assert out["fused_context"] == fused_state["fused_context"]
+
+    def test_reorders_when_enabled(self) -> None:
+        state = _make_state(faiss_results=[_FAISS_RESULT_1, _FAISS_RESULT_2], use_faiss=True)
+        state["use_rerank"] = True
+        fused_state = RAGAgent.fuse_results(state)
+        # 假设 rerank 偏好原索引 1（第二条）
+        with patch(
+            "agents.rag_agent._call_siliconflow_rerank",
+            return_value=[
+                {"index": 1, "relevance_score": 0.99},
+                {"index": 0, "relevance_score": 0.88},
+            ],
+        ):
+            agent = RAGAgent(api_key="", rerank_api_key="fake")
+            out = agent.rerank_results(fused_state)
+        assert out["fused_context_before_rerank"][0]["doc_id"] == "1"
+        assert out["fused_context"][0]["doc_id"] == "2"
+        assert out["fused_context"][0]["citation_index"] == 1
 
 
 # ---------------------------------------------------------------------------

@@ -679,6 +679,11 @@ GET /notes/query?q=极限的定义&n=3&subject=数学
 | `params` | object | ❌ | `{}` | 路由参数（如 `{"subject": "数学", "year": 2023}`） |
 | `use_faiss` | boolean | ❌ | `true` | 是否检索 FAISS 静态知识库 |
 | `use_chroma` | boolean | ❌ | `false` | 是否检索 Chroma 动态笔记库 |
+| `use_rrf` | boolean | ❌ | `false` | 是否启用 RRF 融合 |
+| `rrf_k` | int | ❌ | `60` | RRF 融合参数（1–200） |
+| `use_rerank` | boolean | ❌ | `false` | 是否启用重排模型 |
+| `rerank_model` | string | ❌ | `Pro/BAAI/bge-reranker-v2-m3` | 重排模型名称 |
+| `rerank_top_n` | int | ❌ | `5` | 参与重排的候选数量（1–20） |
 | `n_faiss_results` | int | ❌ | `5` | FAISS 返回结果数（1–20） |
 | `n_chroma_results` | int | ❌ | `3` | Chroma 返回结果数（1–10） |
 | `chroma_filter` | object | ❌ | `null` | Chroma 元数据过滤（如 `{"subject": "数学"}`） |
@@ -700,6 +705,11 @@ GET /notes/query?q=极限的定义&n=3&subject=数学
   "user_input": "马克思主义哲学的基本原理是什么？",
   "use_faiss": true,
   "use_chroma": true,
+  "use_rrf": true,
+  "rrf_k": 60,
+  "use_rerank": true,
+  "rerank_model": "Pro/BAAI/bge-reranker-v2-m3",
+  "rerank_top_n": 5,
   "chroma_filter": {"subject": "政治"},
   "n_chroma_results": 3
 }
@@ -834,6 +844,61 @@ data: {"status": "done"}
 1. 展开 `GET /api/answer/mock`。
 2. 点击 **Try it out** → **Execute**。
 3. 无需配置 API Key，直接查看问答结果。
+
+---
+
+### 6.4 `POST /api/answer/test/retrieval` — 检索重排测试
+
+**用途**：专门用于测试检索与重排链路，返回重排前/后的候选顺序，方便比较：
+- 仅 FAISS
+- 仅 Chroma
+- FAISS + Chroma
+- FAISS + Chroma + Rerank
+
+**请求体**：与 `POST /api/answer` 相同。
+
+**请求体示例（启用重排）**：
+
+```json
+{
+  "user_input": "导数的几何意义是什么？",
+  "use_faiss": true,
+  "use_chroma": true,
+  "use_rerank": true,
+  "rerank_model": "Pro/BAAI/bge-reranker-v2-m3",
+  "rerank_top_n": 5
+}
+```
+
+**响应关键字段**：
+- `before_rerank`: 重排前顺序
+- `after_rerank`: 重排后顺序
+
+**Swagger 测试步骤**：
+1. 展开 `POST /api/answer/test/retrieval`。
+2. 点击 **Try it out**，填入请求体。
+3. 分别切换 `use_faiss/use_chroma/use_rerank`，对比 `before_rerank` 与 `after_rerank`。
+
+---
+
+### 6.5 `POST /api/answer/test/fusion` — 融合策略测试（新增）
+
+**用途**：比较默认融合（按 score 排序）和 RRF 融合的结果差异。
+
+**请求体示例**：
+
+```json
+{
+  "user_input": "导数的几何意义是什么？",
+  "use_faiss": true,
+  "use_chroma": true,
+  "rrf_k": 60
+}
+```
+
+**响应关键字段**：
+- `default_fusion`: 默认融合结果
+- `rrf_fusion`: RRF 融合结果
 
 ---
 

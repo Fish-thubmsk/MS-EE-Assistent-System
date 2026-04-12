@@ -5,7 +5,8 @@ RAG QA Agent — LangGraph RAG 问答模式
   1. 从 FAISS（静态知识库/题库）检索相关内容
   2. 从 Chroma（动态用户笔记/错题）检索相关内容（可选）
   3. 融合召回结果，去重排序
-  4. 调用 LLM（DeepSeek-R1 via SiliconFlow，或任意 LangChain LLM）生成带引用的答案
+  4. 可选使用 Reranker 模型重排引用上下文
+  5. 调用 LLM（DeepSeek-R1 via SiliconFlow，或任意 LangChain LLM）生成带引用的答案
   5. 返回答案、溯源引用及相似推荐
 
 支持：
@@ -39,6 +40,21 @@ logger = logging.getLogger(__name__)
 SILICONFLOW_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1")
 DEFAULT_N_FAISS = int(os.getenv("DEFAULT_N_FAISS", "5"))
 DEFAULT_N_CHROMA = int(os.getenv("DEFAULT_N_CHROMA", "3"))
+DEFAULT_USE_RERANK = os.getenv("RAG_USE_RERANK", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+DEFAULT_RERANK_MODEL = os.getenv("RERANK_MODEL", "Pro/BAAI/bge-reranker-v2-m3")
+DEFAULT_RERANK_TOP_N = int(os.getenv("RERANK_TOP_N", "5"))
+DEFAULT_USE_RRF = os.getenv("RAG_USE_RRF", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+DEFAULT_RRF_K = int(os.getenv("RRF_K", "60"))
 
 # ---------------------------------------------------------------------------
 # RAG 状态定义
@@ -56,6 +72,11 @@ class RAGState(TypedDict):
     # 检索配置
     use_faiss: bool                      # 是否检索 FAISS 静态知识库
     use_chroma: bool                     # 是否检索 Chroma 动态笔记库
+    use_rrf: bool                        # 是否启用 RRF 融合
+    rrf_k: int                           # RRF 的 k 参数
+    use_rerank: bool                     # 是否启用 LLM 重排
+    rerank_model: str                    # 重排模型名称
+    rerank_top_n: int                    # 重排候选数量
     n_faiss_results: int                 # FAISS 返回结果数
     n_chroma_results: int                # Chroma 返回结果数
     chroma_filter: Optional[dict[str, str]]  # Chroma 元数据过滤（如 subject）
@@ -63,6 +84,7 @@ class RAGState(TypedDict):
     # 检索结果
     faiss_results: list[dict[str, Any]]
     chroma_results: list[dict[str, Any]]
+    fused_context_before_rerank: list[dict[str, Any]]  # 重排前结果（用于调试/测试）
     fused_context: list[dict[str, Any]]  # 融合后的上下文（含 citation_index）
 
     # 输出
@@ -234,6 +256,57 @@ def _call_langchain_llm(prompt: str, llm: Any) -> str:
     return getattr(response, "content", str(response)).strip()
 
 
+def _call_siliconflow_rerank(
+    *,
+    query: str,
+    documents: list[str],
+    api_key: str,
+    model: str,
+    base_url: str = SILICONFLOW_BASE_URL,
+    top_n: Optional[int] = None,
+    timeout: Optional[int] = None,
+) -> list[dict[str, float]]:
+    """调用 SiliconFlow /rerank 接口，返回按相关性排序后的索引列表。"""
+    if not api_key:
+        raise ValueError("SiliconFlow API Key 未配置，无法执行重排。")
+    if not model:
+        raise ValueError("重排模型未配置，请设置 RERANK_MODEL。")
+    if not documents:
+        return []
+    _timeout = timeout if timeout is not None else get_sf_timeout()
+    _top_n = top_n if top_n is not None else len(documents)
+    _top_n = max(1, min(_top_n, len(documents)))
+    url = f"{base_url.rstrip('/')}/rerank"
+    payload = {
+        "model": model,
+        "query": query,
+        "documents": documents,
+        "top_n": _top_n,
+        "return_documents": False,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    response = call_with_retry(
+        lambda: httpx.post(url, json=payload, headers=headers, timeout=_timeout)
+    )
+    data = response.json()
+    results = data.get("results", [])
+    parsed: list[dict[str, float]] = []
+    for item in results:
+        idx = item.get("index")
+        if idx is None:
+            continue
+        try:
+            score = float(item.get("relevance_score", 0.0))
+        except (TypeError, ValueError):
+            score = 0.0
+        parsed.append({"index": int(idx), "relevance_score": score})
+    parsed.sort(key=lambda x: x["relevance_score"], reverse=True)
+    return parsed
+
+
 # ---------------------------------------------------------------------------
 # RAG Agent
 # ---------------------------------------------------------------------------
@@ -261,7 +334,10 @@ class RAGAgent:
         chroma_manager: Optional[Any] = None,
         llm: Optional[Any] = None,
         api_key: Optional[str] = None,
+        rerank_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
+        rerank_model: Optional[str] = None,
+        rerank_top_n: Optional[int] = None,
         llm_base_url: str = SILICONFLOW_BASE_URL,
         llm_temperature: Optional[float] = None,
         llm_max_tokens: Optional[int] = None,
@@ -270,7 +346,10 @@ class RAGAgent:
         self._chroma_manager = chroma_manager
         self._llm = llm
         self._api_key = api_key or os.environ.get("SILICONFLOW_API_KEY", "")
+        self._rerank_api_key = rerank_api_key or self._api_key
         self._llm_model = llm_model or os.environ.get("LLM_MODEL", "")
+        self._rerank_model = rerank_model or DEFAULT_RERANK_MODEL
+        self._rerank_top_n = rerank_top_n or DEFAULT_RERANK_TOP_N
         self._llm_base_url = llm_base_url
         self._llm_temperature = llm_temperature
         self._llm_max_tokens = llm_max_tokens
@@ -319,30 +398,60 @@ class RAGAgent:
         """
         MAX_CITATIONS = 5
         MAX_RECOMMENDATIONS = 3
-        
+
         faiss_raw = state.get("faiss_results", [])
         chroma_raw = state.get("chroma_results", [])
+        use_rrf = state.get("use_rrf", DEFAULT_USE_RRF)
+        rrf_k = max(1, int(state.get("rrf_k", DEFAULT_RRF_K)))
 
         normalized: list[dict[str, Any]] = []
-        # FAISS 先放入（优先）
-        for r in faiss_raw:
-            normalized.append(_normalize_faiss_result(r, 0))
-        for r in chroma_raw:
-            normalized.append(_normalize_chroma_result(r, 0))
+        for rank, r in enumerate(faiss_raw, start=1):
+            item = _normalize_faiss_result(r, 0)
+            item["_rank"] = rank
+            item["_rrf_score"] = 1.0 / (rrf_k + rank)
+            normalized.append(item)
+        for rank, r in enumerate(chroma_raw, start=1):
+            item = _normalize_chroma_result(r, 0)
+            item["_rank"] = rank
+            item["_rrf_score"] = 1.0 / (rrf_k + rank)
+            normalized.append(item)
 
-        # 按 score 降序排列
-        normalized.sort(key=lambda x: x["score"], reverse=True)
+        if use_rrf:
+            # RRF：按内容去重并累加跨检索源 rank 得分
+            merged: dict[str, dict[str, Any]] = {}
+            for item in normalized:
+                key = item["content"][:100].strip()
+                if not key:
+                    continue
+                if key not in merged:
+                    merged[key] = dict(item)
+                else:
+                    merged[key]["_rrf_score"] += item.get("_rrf_score", 0.0)
+                    if item.get("score", 0.0) > merged[key].get("score", 0.0):
+                        merged[key]["score"] = item["score"]
+                        merged[key]["doc_id"] = item["doc_id"]
+                        merged[key]["source"] = item["source"]
+                        merged[key]["metadata"] = item["metadata"]
+                merged[key]["score"] = float(merged[key].get("_rrf_score", 0.0))
+            ranked = sorted(
+                merged.values(),
+                key=lambda x: (x.get("_rrf_score", 0.0), x.get("score", 0.0)),
+                reverse=True,
+            )
+        else:
+            ranked = sorted(normalized, key=lambda x: x["score"], reverse=True)
 
         # 去重（基于内容前 100 字符）
         seen_contents: set[str] = set()
         fused: list[dict[str, Any]] = []
-        for item in normalized:
+        for item in ranked:
             key = item["content"][:100].strip()
             if key and key not in seen_contents:
                 seen_contents.add(key)
                 item["citation_index"] = len(fused) + 1
+                item.pop("_rank", None)
+                item.pop("_rrf_score", None)
                 fused.append(item)
-                # 最多 MAX_CITATIONS 个用于引用
                 if len(fused) >= MAX_CITATIONS:
                     break
 
@@ -364,6 +473,62 @@ class RAGAgent:
                     break
 
         return {**state, "fused_context": fused, "recommendations": recommendations}
+
+    def rerank_results(self, state: RAGState) -> RAGState:
+        """可选：使用 LLM Reranker 对融合结果重排。"""
+        fused = state.get("fused_context", [])
+        if not state.get("use_rerank", DEFAULT_USE_RERANK):
+            return {**state, "fused_context_before_rerank": list(fused)}
+        if len(fused) <= 1:
+            return {**state, "fused_context_before_rerank": list(fused)}
+        if not self._rerank_api_key:
+            logger.warning("启用了重排但未配置 API Key，跳过重排。")
+            return {**state, "fused_context_before_rerank": list(fused)}
+
+        rerank_model = (state.get("rerank_model") or self._rerank_model).strip()
+        rerank_top_n = state.get("rerank_top_n", self._rerank_top_n)
+        if rerank_top_n <= 0:
+            rerank_top_n = len(fused)
+
+        documents = [item.get("content", "") for item in fused]
+        try:
+            ranked = _call_siliconflow_rerank(
+                query=state["raw_input"],
+                documents=documents,
+                api_key=self._rerank_api_key,
+                model=rerank_model,
+                base_url=self._llm_base_url,
+                top_n=min(rerank_top_n, len(documents)),
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Rerank 调用失败，保留原排序：%s", exc)
+            return {**state, "fused_context_before_rerank": list(fused)}
+
+        if not ranked:
+            return {**state, "fused_context_before_rerank": list(fused)}
+
+        used: set[int] = set()
+        reordered: list[dict[str, Any]] = []
+        for rank in ranked:
+            idx = rank["index"]
+            if 0 <= idx < len(fused) and idx not in used:
+                used.add(idx)
+                item = dict(fused[idx])
+                item["score"] = rank["relevance_score"]
+                reordered.append(item)
+
+        for idx, item in enumerate(fused):
+            if idx not in used:
+                reordered.append(dict(item))
+
+        for idx, item in enumerate(reordered, start=1):
+            item["citation_index"] = idx
+
+        return {
+            **state,
+            "fused_context_before_rerank": list(fused),
+            "fused_context": reordered,
+        }
 
     def generate_answer(self, state: RAGState) -> RAGState:
         """
@@ -476,7 +641,12 @@ def create_rag_graph(
     chroma_manager: Optional[Any] = None,
     llm: Optional[Any] = None,
     api_key: Optional[str] = None,
+    rerank_api_key: Optional[str] = None,
     llm_model: Optional[str] = None,
+    use_rrf: bool = DEFAULT_USE_RRF,
+    rrf_k: int = DEFAULT_RRF_K,
+    rerank_model: Optional[str] = None,
+    rerank_top_n: Optional[int] = None,
     llm_base_url: str = SILICONFLOW_BASE_URL,
     llm_temperature: Optional[float] = None,
     llm_max_tokens: Optional[int] = None,
@@ -492,6 +662,8 @@ def create_rag_graph(
         retrieve_chroma
           │
         fuse_results
+          │
+        rerank_results
           │
         generate_answer
           │
@@ -515,7 +687,10 @@ def create_rag_graph(
         chroma_manager=chroma_manager,
         llm=llm,
         api_key=api_key,
+        rerank_api_key=rerank_api_key,
         llm_model=llm_model,
+        rerank_model=rerank_model,
+        rerank_top_n=rerank_top_n,
         llm_base_url=llm_base_url,
         llm_temperature=llm_temperature,
         llm_max_tokens=llm_max_tokens,
@@ -526,12 +701,14 @@ def create_rag_graph(
     graph.add_node("retrieve_faiss", agent.retrieve_faiss)
     graph.add_node("retrieve_chroma", agent.retrieve_chroma)
     graph.add_node("fuse_results", RAGAgent.fuse_results)
+    graph.add_node("rerank_results", agent.rerank_results)
     graph.add_node("generate_answer", agent.generate_answer)
 
     graph.add_edge(START, "retrieve_faiss")
     graph.add_edge("retrieve_faiss", "retrieve_chroma")
     graph.add_edge("retrieve_chroma", "fuse_results")
-    graph.add_edge("fuse_results", "generate_answer")
+    graph.add_edge("fuse_results", "rerank_results")
+    graph.add_edge("rerank_results", "generate_answer")
     graph.add_edge("generate_answer", END)
 
     return graph.compile()
@@ -549,7 +726,12 @@ def run_rag(
     chroma_manager: Optional[Any] = None,
     llm: Optional[Any] = None,
     api_key: Optional[str] = None,
+    rerank_api_key: Optional[str] = None,
     llm_model: Optional[str] = None,
+    use_rrf: bool = DEFAULT_USE_RRF,
+    rrf_k: int = DEFAULT_RRF_K,
+    rerank_model: Optional[str] = None,
+    rerank_top_n: int = DEFAULT_RERANK_TOP_N,
     llm_base_url: str = SILICONFLOW_BASE_URL,
     llm_temperature: Optional[float] = None,
     llm_max_tokens: Optional[int] = None,
@@ -557,6 +739,7 @@ def run_rag(
     params: Optional[dict[str, Any]] = None,
     use_faiss: bool = True,
     use_chroma: bool = False,
+    use_rerank: bool = DEFAULT_USE_RERANK,
     n_faiss_results: int = DEFAULT_N_FAISS,
     n_chroma_results: int = DEFAULT_N_CHROMA,
     chroma_filter: Optional[dict[str, str]] = None,
@@ -590,7 +773,12 @@ def run_rag(
         chroma_manager=chroma_manager,
         llm=llm,
         api_key=api_key,
+        rerank_api_key=rerank_api_key,
         llm_model=llm_model,
+        use_rrf=use_rrf,
+        rrf_k=rrf_k,
+        rerank_model=rerank_model,
+        rerank_top_n=rerank_top_n,
         llm_base_url=llm_base_url,
         llm_temperature=llm_temperature,
         llm_max_tokens=llm_max_tokens,
@@ -602,11 +790,17 @@ def run_rag(
         "params": dict(params or {}),
         "use_faiss": use_faiss,
         "use_chroma": use_chroma,
+        "use_rrf": use_rrf,
+        "rrf_k": rrf_k,
+        "use_rerank": use_rerank,
+        "rerank_model": rerank_model or DEFAULT_RERANK_MODEL,
+        "rerank_top_n": rerank_top_n,
         "n_faiss_results": n_faiss_results,
         "n_chroma_results": n_chroma_results,
         "chroma_filter": chroma_filter,
         "faiss_results": [],
         "chroma_results": [],
+        "fused_context_before_rerank": [],
         "fused_context": [],
         "answer": "",
         "citations": [],

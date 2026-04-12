@@ -4,6 +4,8 @@
 提供以下接口：
     POST /api/answer          同步 RAG 问答，返回完整答案
     POST /api/answer/stream   SSE 流式 RAG 问答，逐 token 返回 LLM 生成内容
+    POST /api/answer/test/retrieval  检索/重排调试接口（返回重排前后顺序）
+    POST /api/answer/test/fusion     融合策略调试接口（默认融合 vs RRF）
     GET  /api/answer/mock     使用 mock 数据快速体验问答
 """
 
@@ -23,6 +25,8 @@ from pydantic import BaseModel, Field
 from agents.rag_agent import (
     DEFAULT_N_CHROMA,
     DEFAULT_N_FAISS,
+    DEFAULT_RERANK_MODEL,
+    DEFAULT_RERANK_TOP_N,
     SILICONFLOW_BASE_URL,
     _ANSWER_PROMPT_TEMPLATE,
     run_rag,
@@ -78,6 +82,16 @@ class AnswerRequest(BaseModel):
     )
     use_faiss: bool = Field(default=True, description="是否检索 FAISS 静态知识库")
     use_chroma: bool = Field(default=False, description="是否检索 Chroma 动态笔记库")
+    use_rrf: bool = Field(default=False, description="是否启用 RRF 融合")
+    rrf_k: int = Field(default=60, ge=1, le=200, description="RRF 融合参数 k")
+    use_rerank: bool = Field(default=False, description="是否启用 LLM 重排引用上下文")
+    rerank_model: str = Field(
+        default=DEFAULT_RERANK_MODEL,
+        description="重排模型名称（SiliconFlow Rerank）",
+    )
+    rerank_top_n: int = Field(
+        default=DEFAULT_RERANK_TOP_N, ge=1, le=20, description="参与重排的候选数量"
+    )
     n_faiss_results: int = Field(
         default=DEFAULT_N_FAISS, ge=1, le=20, description="FAISS 返回结果数"
     )
@@ -112,6 +126,32 @@ class AnswerResponse(BaseModel):
         default_factory=list, description="相似题目推荐"
     )
     messages: list[dict[str, str]] = Field(..., description="更新后的消息列表")
+
+
+class RetrievalItemOut(BaseModel):
+    index: int
+    source: str
+    doc_id: str
+    score: float
+    content_snippet: str
+
+
+class RetrievalDebugResponse(BaseModel):
+    query: str
+    use_faiss: bool
+    use_chroma: bool
+    use_rerank: bool
+    rerank_model: str
+    before_rerank: list[RetrievalItemOut]
+    after_rerank: list[RetrievalItemOut]
+
+
+class FusionDebugResponse(BaseModel):
+    query: str
+    use_faiss: bool
+    use_chroma: bool
+    default_fusion: list[RetrievalItemOut]
+    rrf_fusion: list[RetrievalItemOut]
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +301,11 @@ async def answer(
                 params=req.params or None,
                 use_faiss=req.use_faiss,
                 use_chroma=req.use_chroma,
+                use_rrf=req.use_rrf,
+                rrf_k=req.rrf_k,
+                use_rerank=req.use_rerank,
+                rerank_model=req.rerank_model,
+                rerank_top_n=req.rerank_top_n,
                 chroma_manager=chroma_mgr,
                 n_faiss_results=req.n_faiss_results,
                 n_chroma_results=req.n_chroma_results,
@@ -343,7 +388,13 @@ async def answer_stream(
                 params=req.params or None,
                 use_faiss=req.use_faiss,
                 use_chroma=req.use_chroma,
+                use_rrf=req.use_rrf,
+                rrf_k=req.rrf_k,
+                use_rerank=req.use_rerank,
+                rerank_model=req.rerank_model,
+                rerank_top_n=req.rerank_top_n,
                 chroma_manager=chroma_mgr,
+                rerank_api_key=api_key if req.use_rerank else "",
                 n_faiss_results=n_faiss,
                 n_chroma_results=req.n_chroma_results,
                 chroma_filter=req.chroma_filter,
@@ -409,6 +460,7 @@ async def answer_mock() -> AnswerResponse:
             api_key="",
             use_faiss=True,
             use_chroma=False,
+            use_rerank=False,
         ),
     )
     return AnswerResponse(
@@ -416,4 +468,147 @@ async def answer_mock() -> AnswerResponse:
         citations=[CitationOut(**c) for c in state.get("citations", [])],
         recommendations=[RecommendationOut(**r) for r in state.get("recommendations", [])],
         messages=state["messages"],
+    )
+
+
+@router.post(
+    "/test/retrieval",
+    response_model=RetrievalDebugResponse,
+    summary="RAG 检索重排测试",
+)
+async def answer_retrieval_test(
+    req: AnswerRequest,
+    settings: SettingsDep,
+    _chroma_manager: OptionalChromaManagerDep,
+) -> RetrievalDebugResponse:
+    """
+    专用于检索阶段调试：返回重排前/后的候选顺序，便于对比 FAISS、Chroma 与 Rerank 效果。
+    """
+    chroma_mgr = _chroma_manager if req.use_chroma else None
+    state = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: run_rag(
+            req.user_input,
+            api_key="",  # 仅测试检索/重排，不触发真实答案生成
+            rerank_api_key=settings.siliconflow_api_key if req.use_rerank else "",
+            llm_model=settings.llm_model,
+            llm_base_url=settings.llm_base_url,
+            llm_temperature=settings.llm_temperature,
+            llm_max_tokens=settings.llm_max_tokens,
+            messages=req.messages or None,
+            params=req.params or None,
+            use_faiss=req.use_faiss,
+            use_chroma=req.use_chroma,
+            use_rrf=req.use_rrf,
+            rrf_k=req.rrf_k,
+            use_rerank=req.use_rerank,
+            rerank_model=req.rerank_model,
+            rerank_top_n=req.rerank_top_n,
+            chroma_manager=chroma_mgr,
+            n_faiss_results=req.n_faiss_results,
+            n_chroma_results=req.n_chroma_results,
+            chroma_filter=req.chroma_filter,
+        ),
+    )
+
+    def _to_items(rows: list[dict[str, Any]]) -> list[RetrievalItemOut]:
+        return [
+            RetrievalItemOut(
+                index=i + 1,
+                source=r.get("source", ""),
+                doc_id=r.get("doc_id", ""),
+                score=float(r.get("score", 0.0)),
+                content_snippet=str(r.get("content", ""))[:200],
+            )
+            for i, r in enumerate(rows)
+        ]
+
+    before = state.get("fused_context_before_rerank") or state.get("fused_context", [])
+    after = state.get("fused_context", [])
+    return RetrievalDebugResponse(
+        query=req.user_input,
+        use_faiss=req.use_faiss,
+        use_chroma=req.use_chroma,
+        use_rerank=req.use_rerank,
+        rerank_model=req.rerank_model,
+        before_rerank=_to_items(before),
+        after_rerank=_to_items(after),
+    )
+
+
+@router.post(
+    "/test/fusion",
+    response_model=FusionDebugResponse,
+    summary="RAG 融合策略测试（默认 vs RRF）",
+)
+async def answer_fusion_test(
+    req: AnswerRequest,
+    settings: SettingsDep,
+    _chroma_manager: OptionalChromaManagerDep,
+) -> FusionDebugResponse:
+    """专用于融合阶段调试：比较默认 score 融合与 RRF 融合结果。"""
+    chroma_mgr = _chroma_manager if req.use_chroma else None
+
+    base_state = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: run_rag(
+            req.user_input,
+            api_key="",
+            llm_model=settings.llm_model,
+            llm_base_url=settings.llm_base_url,
+            llm_temperature=settings.llm_temperature,
+            llm_max_tokens=settings.llm_max_tokens,
+            messages=req.messages or None,
+            params=req.params or None,
+            use_faiss=req.use_faiss,
+            use_chroma=req.use_chroma,
+            use_rrf=False,
+            use_rerank=False,
+            chroma_manager=chroma_mgr,
+            n_faiss_results=req.n_faiss_results,
+            n_chroma_results=req.n_chroma_results,
+            chroma_filter=req.chroma_filter,
+        ),
+    )
+    rrf_state = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: run_rag(
+            req.user_input,
+            api_key="",
+            llm_model=settings.llm_model,
+            llm_base_url=settings.llm_base_url,
+            llm_temperature=settings.llm_temperature,
+            llm_max_tokens=settings.llm_max_tokens,
+            messages=req.messages or None,
+            params=req.params or None,
+            use_faiss=req.use_faiss,
+            use_chroma=req.use_chroma,
+            use_rrf=True,
+            rrf_k=req.rrf_k,
+            use_rerank=False,
+            chroma_manager=chroma_mgr,
+            n_faiss_results=req.n_faiss_results,
+            n_chroma_results=req.n_chroma_results,
+            chroma_filter=req.chroma_filter,
+        ),
+    )
+
+    def _to_items(rows: list[dict[str, Any]]) -> list[RetrievalItemOut]:
+        return [
+            RetrievalItemOut(
+                index=i + 1,
+                source=r.get("source", ""),
+                doc_id=r.get("doc_id", ""),
+                score=float(r.get("score", 0.0)),
+                content_snippet=str(r.get("content", ""))[:200],
+            )
+            for i, r in enumerate(rows)
+        ]
+
+    return FusionDebugResponse(
+        query=req.user_input,
+        use_faiss=req.use_faiss,
+        use_chroma=req.use_chroma,
+        default_fusion=_to_items(base_state.get("fused_context", [])),
+        rrf_fusion=_to_items(rrf_state.get("fused_context", [])),
     )
