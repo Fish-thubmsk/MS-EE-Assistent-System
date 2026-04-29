@@ -595,3 +595,212 @@ class TestAnswerWithChroma:
         )
         assert resp.status_code == 200
         assert "answer" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# 数学年份字段 & 统一检索视图测试
+# ---------------------------------------------------------------------------
+
+
+import sqlite3
+from pathlib import Path
+
+
+def _make_test_db(db_path: str) -> None:
+    """创建一个最小化的测试用 knowledge_base.db，包含三科样例数据。"""
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE subjects (
+            subject_code TEXT PRIMARY KEY,
+            subject_name TEXT NOT NULL
+        );
+        CREATE TABLE papers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_code TEXT NOT NULL,
+            paper_no INTEGER NOT NULL,
+            paper_title TEXT
+        );
+        CREATE TABLE questions_math (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            paper_id INTEGER NOT NULL,
+            question_no INTEGER NOT NULL,
+            question_type TEXT,
+            stem TEXT NOT NULL
+        );
+        CREATE TABLE questions_politics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_id INTEGER,
+            year INTEGER NOT NULL,
+            question_type TEXT NOT NULL,
+            stem TEXT NOT NULL,
+            correct_answer TEXT,
+            analysis TEXT,
+            difficulty INTEGER,
+            score REAL
+        );
+        CREATE TABLE questions_english (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            question_number INTEGER,
+            question_type TEXT NOT NULL,
+            content TEXT NOT NULL,
+            translation TEXT
+        );
+        CREATE TABLE sub_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_type TEXT NOT NULL,
+            question_id INTEGER NOT NULL,
+            question_number INTEGER,
+            sub_question_number INTEGER,
+            stem TEXT,
+            answer TEXT,
+            analysis TEXT
+        );
+        CREATE TABLE options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_type TEXT NOT NULL,
+            sub_question_id INTEGER NOT NULL,
+            option_key TEXT NOT NULL,
+            option_text TEXT NOT NULL
+        );
+
+        INSERT INTO subjects VALUES ('math1', '数学(一)');
+        INSERT INTO papers VALUES (1, 'math1', 1, '2020年全国硕士研究生招生统一考试数学试题(数一)');
+        INSERT INTO papers VALUES (2, 'math1', 2, '2021年全国硕士研究生招生统一考试数学试题(数一)');
+        INSERT INTO questions_math VALUES (1, 1, 1, 'single_choice', '2020年题干');
+        INSERT INTO questions_math VALUES (2, 2, 1, 'single_choice', '2021年题干');
+        INSERT INTO questions_math VALUES (3, 1, 2, 'fill_blank', '2020年填空题');
+        INSERT INTO questions_politics VALUES (1, 101, 2020, '单选题', '政治单选题题干', 'A', '解析', 1, 1.0);
+        INSERT INTO questions_politics VALUES (2, 102, 2021, '单选题', '政治2021题干', 'B', '解析', 1, 1.0);
+        INSERT INTO questions_english VALUES (1, 2020, 2, 'reading', '英语文章内容', NULL);
+        INSERT INTO questions_english VALUES (2, 2021, 2, 'reading', '2021英语文章', NULL);
+
+        INSERT INTO sub_questions (subject_type, question_id, stem, answer) VALUES ('math', 1, NULL, 'A');
+        INSERT INTO sub_questions (subject_type, question_id, stem, answer) VALUES ('math', 2, NULL, 'B');
+        INSERT INTO sub_questions (subject_type, question_id, stem, answer) VALUES ('math', 3, NULL, NULL);
+        INSERT INTO options (subject_type, sub_question_id, option_key, option_text) VALUES ('math', 1, 'A', '选项A');
+        INSERT INTO options (subject_type, sub_question_id, option_key, option_text) VALUES ('math', 1, 'B', '选项B');
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+class TestMathYearField:
+    """测试数学题年份字段、按年份抽题和统一检索视图。"""
+
+    @pytest.fixture()
+    def db_path(self, tmp_path: Path) -> str:
+        """在临时目录创建测试数据库，运行迁移脚本后返回路径。"""
+        path = str(tmp_path / "knowledge_base.db")
+        _make_test_db(path)
+
+        # 运行迁移脚本
+        from datebase.migrate_math_year import migrate
+        migrate(path)
+        return path
+
+    def test_migration_adds_year_column(self, db_path: str) -> None:
+        """迁移后 questions_math 应有 year 列。"""
+        conn = sqlite3.connect(db_path)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(questions_math)")}
+        conn.close()
+        assert "year" in cols
+
+    def test_migration_backfills_year(self, db_path: str) -> None:
+        """迁移后 year 应从 paper_title 正确回填。"""
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT stem, year FROM questions_math ORDER BY id"
+        ).fetchall()
+        conn.close()
+        # 第1、3题来自 2020 年试卷；第2题来自 2021 年试卷
+        assert rows[0][1] == 2020, f"期望2020，实际{rows[0][1]}"
+        assert rows[1][1] == 2021, f"期望2021，实际{rows[1][1]}"
+        assert rows[2][1] == 2020, f"期望2020，实际{rows[2][1]}"
+
+    def test_migration_creates_unified_view(self, db_path: str) -> None:
+        """迁移后 v_all_questions 视图应包含三科数据。"""
+        conn = sqlite3.connect(db_path)
+        views = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='view'"
+            )
+        }
+        assert "v_all_questions" in views
+
+        subjects = {
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT subject FROM v_all_questions"
+            )
+        }
+        conn.close()
+        assert subjects == {"math", "politics", "english"}
+
+    def test_unified_view_year_column(self, db_path: str) -> None:
+        """v_all_questions 中数学题应有正确的年份。"""
+        conn = sqlite3.connect(db_path)
+        math_rows = conn.execute(
+            "SELECT year FROM v_all_questions WHERE subject='math' ORDER BY id"
+        ).fetchall()
+        conn.close()
+        years = [r[0] for r in math_rows]
+        assert 2020 in years
+        assert 2021 in years
+
+    def test_years_endpoint_math_uses_year_column(self, client: TestClient, db_path: str) -> None:
+        """GET /api/practice/years/math 应直接从 questions_math.year 查询。"""
+        import backend.routers.practice as practice_mod
+
+        original = practice_mod._DB_PATH
+        try:
+            practice_mod._DB_PATH = Path(db_path)
+            resp = client.get("/api/practice/years/math")
+            assert resp.status_code == 200
+            years = resp.json()
+            assert isinstance(years, list)
+            assert 2020 in years
+            assert 2021 in years
+        finally:
+            practice_mod._DB_PATH = original
+
+    def test_question_endpoint_math_year_filter(self, client: TestClient, db_path: str) -> None:
+        """GET /api/practice/question?subject=math&year=2020 应只返回2020年题目。"""
+        import backend.routers.practice as practice_mod
+
+        original = practice_mod._DB_PATH
+        try:
+            practice_mod._DB_PATH = Path(db_path)
+            resp = client.get("/api/practice/question?subject=math&question_type=single_choice&year=2020")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["year"] == 2020
+        finally:
+            practice_mod._DB_PATH = original
+
+    def test_question_math_year_field_present(self, client: TestClient, db_path: str) -> None:
+        """GET /api/practice/question?subject=math 返回的题目应包含 year 字段。"""
+        import backend.routers.practice as practice_mod
+
+        original = practice_mod._DB_PATH
+        try:
+            practice_mod._DB_PATH = Path(db_path)
+            resp = client.get("/api/practice/question?subject=math&question_type=single_choice")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "year" in data
+            assert data["year"] in (2020, 2021)
+        finally:
+            practice_mod._DB_PATH = original
+
+    def test_migration_idempotent(self, db_path: str) -> None:
+        """迁移脚本可重复执行而不报错（幂等性）。"""
+        from datebase.migrate_math_year import migrate
+        migrate(db_path)  # 第二次运行
+        conn = sqlite3.connect(db_path)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(questions_math)")}
+        conn.close()
+        assert "year" in cols
