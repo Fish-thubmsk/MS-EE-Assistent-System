@@ -11,6 +11,7 @@
 """
 
 import json
+import re
 import pymysql
 import sys
 from pathlib import Path
@@ -162,11 +163,13 @@ class ImportManager:
             question_no INT NOT NULL COMMENT '题号',
             question_type VARCHAR(50) COMMENT '题型',
             stem LONGTEXT NOT NULL COMMENT '题干',
+            year INT COMMENT '考试年份',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (paper_id) REFERENCES papers(id),
             KEY idx_paper (paper_id),
-            KEY idx_type (question_type)
+            KEY idx_type (question_type),
+            KEY idx_year (year)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数学题目表'
         """)
         print("✓ questions_math 表创建")
@@ -365,6 +368,10 @@ class ImportManager:
             for paper_data in data.get('papers', []):
                 paper_title = paper_data.get('paper_title', '')
                 
+                # 从试卷标题中提取考试年份
+                year_match = re.search(r'((?:19|20)\d{2})', paper_title)
+                paper_year = int(year_match.group(1)) if year_match else None
+                
                 # 插入试卷
                 # 提取试卷号 - 通常是从标题中
                 paper_no = 0
@@ -392,9 +399,9 @@ class ImportManager:
                     stem = question.get('stem', '')
                     
                     self.cursor.execute("""
-                    INSERT INTO questions_math (paper_id, question_no, question_type, stem)
-                    VALUES (%s, %s, %s, %s)
-                    """, (paper_id, question_no, question_type, stem))
+                    INSERT INTO questions_math (paper_id, question_no, question_type, stem, year)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """, (paper_id, question_no, question_type, stem, paper_year))
                     
                     math_q_id = self.cursor.lastrowid
                     self.stats['questions_math'] += 1

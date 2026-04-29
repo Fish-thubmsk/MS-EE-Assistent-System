@@ -360,7 +360,7 @@ def _fetch_math_question(
     question_type: Optional[str],
     year: Optional[int],
 ) -> Optional[QuestionOut]:
-    """随机抽一道数学题。"""
+    """随机抽一道数学题（直接从 questions_math.year 读取年份）。"""
     conn = _db_connect()
     if conn is None:
         return None
@@ -370,29 +370,23 @@ def _fetch_math_question(
 
         conditions = ["qm.question_type = ?"]
         params: list[Any] = [db_type]
-
-        year_join = ""
         if year:
-            # paper_title starts with year for most papers
-            conditions.append("CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) = ?")
+            conditions.append("qm.year = ?")
             params.append(year)
-            year_join = "LEFT JOIN papers p ON p.id=qm.paper_id"
-        else:
-            year_join = "LEFT JOIN papers p ON p.id=qm.paper_id"
 
         where = " AND ".join(conditions)
 
         sql = f"""
-            SELECT qm.id, qm.question_type, qm.stem,
+            SELECT qm.id, qm.question_type, qm.stem, qm.year,
                    s.subject_name AS math_type,
-                   CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) AS year,
                    MAX(CASE WHEN o.option_key='A' THEN o.option_text END) AS optA,
                    MAX(CASE WHEN o.option_key='B' THEN o.option_text END) AS optB,
                    MAX(CASE WHEN o.option_key='C' THEN o.option_text END) AS optC,
                    MAX(CASE WHEN o.option_key='D' THEN o.option_text END) AS optD,
                    sq.answer
             FROM questions_math qm
-            {year_join}
+            -- papers join is needed to resolve subjects.subject_name (math type label)
+            LEFT JOIN papers p ON p.id=qm.paper_id
             LEFT JOIN subjects s ON s.subject_code=p.subject_code
             LEFT JOIN sub_questions sq ON sq.question_id=qm.id AND sq.subject_type='math'
             LEFT JOIN options o ON o.sub_question_id=sq.id AND o.subject_type='math'
@@ -409,19 +403,10 @@ def _fetch_math_question(
             if row[col]:
                 opts[k] = row[col]
 
-        # year from paper_title might not be a valid year
-        db_year: Optional[int] = None
-        try:
-            y = int(row["year"])
-            if 2000 <= y <= 2030:
-                db_year = y
-        except (TypeError, ValueError):
-            pass
-
         return QuestionOut(
             id=row["id"],
             subject=f"数学（{row['math_type']}）" if row["math_type"] else "数学",
-            year=db_year,
+            year=row["year"],
             question_type=row["question_type"],
             content=row["stem"],
             options=opts or None,
@@ -558,12 +543,7 @@ async def get_years(subject: str) -> list[int]:
             )
         elif subject == "math":
             cur = conn.execute(
-                """
-                SELECT DISTINCT CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) AS y
-                FROM papers p
-                WHERE CAST(SUBSTR(p.paper_title,1,4) AS INTEGER) BETWEEN 2000 AND 2030
-                ORDER BY y DESC
-                """
+                "SELECT DISTINCT year FROM questions_math WHERE year IS NOT NULL ORDER BY year DESC"
             )
         else:
             return []
